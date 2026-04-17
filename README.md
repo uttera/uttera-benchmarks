@@ -229,3 +229,9 @@ bench-input contract.
 ## License
 
 Apache License 2.0 — see [`LICENSE`](LICENSE).
+
+---
+
+*Uttera /ˈʌt.ər.ə/ — from the English verb "to utter" (to speak aloud).
+Also the backronym **U**niversal **T**ext **T**ransformer **E**ngine for
+**R**ealtime **A**udio.*
