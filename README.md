@@ -321,6 +321,61 @@ Run 7 (same VoxCPM2 model in hotcold) isolates the variable that actually moves 
 | Burst 256 | 0.26 | 0.33 | **3.98** | +1 206 % |
 | Burst 1024 | 0.10 | 0.04 | **4.32** | +10 700 % |
 
+At N ≥ 256 the hotcold-voxcpm column is degraded by an unrelated
+saturation mode (3+ voxcpm cold workers coexisting push the 32 GB
+card into OOM territory); the three-way comparison therefore
+understates voxcpm's per-worker speed. A fairer Coqui-vs-VoxCPM
+comparison at a burst size both backends serve cleanly is in the
+next section.
+
+### Coqui vs VoxCPM within hotcold — fair comparison at N = 160
+
+Both backends run inside the same hot/cold pool architecture with
+cache disabled and a burst of 160 concurrent requests against the
+same 40-prompt corpus. The operator knobs are different: Coqui
+reached the pool's default cap of 6 cold workers (each ~2.6 GB);
+voxcpm ran with `COLD_POOL_SIZE=2` because each voxcpm cold worker
+is ~8 GB and three of them on a 32 GB card is the saturation mode
+mentioned above. The question this test answers: **on a pool of
+workers that fits this GPU, which backend gets more work done per
+minute?**
+
+| Metric | Coqui `COLD_POOL_SIZE=6` | VoxCPM `COLD_POOL_SIZE=2` | Delta |
+|---|---:|---:|---:|
+| Completed | 160 / 160 | 160 / 160 | — |
+| Wall time | 562.6 s | **472.2 s** | **−16 %** |
+| Aggregate RPS | 0.28 | **0.34** | **+21 %** |
+| p50 latency | 302.0 s | **245.7 s** | **−19 %** |
+| p95 latency | 549.2 s | **456.5 s** | **−17 %** |
+| p99 latency | 562.5 s | **470.7 s** | **−16 %** |
+| Routes (HOT / COLD-POOL) | 30 / 130 | 56 / 104 | — |
+| Active processes at peak | 7 (1 hot + 6 cold) | 3 (1 hot + 2 cold) | **−57 %** |
+| Peak VRAM used | ~18 GB | ~28.5 GB | +58 % |
+
+**VoxCPM wins every time metric with fewer than half the processes.**
+The HOT worker alone handled 56/160 requests under voxcpm (35 %) vs
+30/160 under Coqui (19 %) — at the same concurrency the voxcpm HOT
+worker serves roughly 2× the Coqui one. Taking the full pool into
+account, voxcpm produced 21 % more aggregate RPS despite having 4
+fewer workers than Coqui.
+
+The cost is VRAM per worker: 8 GB for a voxcpm worker vs 2.6 GB for
+Coqui. On a 32 GB card this means ~3 voxcpm workers vs ~12 Coqui
+workers. The practical trade-off:
+
+- **Coqui**: wide, cheap horizontal parallelism. Serves higher N with
+  more workers at lower per-worker speed. Easier to co-locate with
+  other GPU consumers.
+- **VoxCPM**: narrow, expensive parallelism. Each worker is faster;
+  the pool is smaller. Needs tighter pool sizing (`COLD_POOL_SIZE=2`
+  on a 32 GB card) but within its size class it delivers more work
+  per minute.
+
+Above the voxcpm pool cap, Coqui keeps scaling gracefully (burst@1024
+is 180/1024 completions in Run 5); voxcpm collapses (1/1024 in Run 7).
+Below it, voxcpm is the faster option at the same VRAM-per-worker
+budget.
+
 ## From the bench to the server — fixes and insights this repo produced
 
 Running the protocol against our own servers surfaced issues we would not
