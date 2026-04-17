@@ -1,0 +1,65 @@
+{
+  "schema_version": "1.0.0",
+  "run_id": "9451c140-08a6-4d9c-92a4-06c7369bdf3e",
+  "run_started_at": "2026-04-17T01:19:38.275625+00:00",
+  "run_finished_at": "2026-04-17T01:19:41.145965+00:00",
+  "node": {
+    "host": "openclaw",
+    "os": "Linux 6.17.0-20-generic",
+    "gpu": "NVIDIA GeForce RTX 5090",
+    "vram_total_gb": 31.8427734375,
+    "vram_free_gb_at_start": 2.326171875,
+    "driver": "590.48.01",
+    "cuda": "13.1",
+    "shared_gpu": true,
+    "cold_start": false
+  },
+  "service": {
+    "repo": "unknown",
+    "commit": "0000000",
+    "protocol_doc": "uttera/uttera-infra:benchmarks/PROTOCOL.md",
+    "model": "openai/whisper-large-v3-turbo",
+    "engine": "vllm",
+    "config": {
+      "max_num_seqs": 32,
+      "max_model_len": 448,
+      "gpu_memory_utilization": 0.7
+    }
+  },
+  "corpus": {
+    "id": "uttera-stt-internal",
+    "n_clips": 160,
+    "total_audio_seconds": 3065.4431875,
+    "sha256_manifest": "34d7c5af847f4817a82eee06e078f83b23a4872cf4efd47fb21157571e06496f",
+    "clip_duration_mean": 19.159019921875,
+    "clip_duration_min": 13.323375,
+    "clip_duration_max": 27.435375
+  },
+  "profile": {
+    "kind": "latency",
+    "iterations": 20,
+    "warmup": 3
+  },
+  "command": "./bench.py --mode stt --server http://127.0.0.1:5002 --profile latency --corpus ./corpora/uttera-stt-internal --shared-gpu --output /home/claw/.openclaw/agents/main/workspace/projects/coding/uttera-benchmarks/results/2026-04-17-run4-vllm-internal/vllm-latency.json",
+  "raw_csv_path": "vllm-latency.csv",
+  "metrics": {
+    "wall_s": 2.8703243732452393,
+    "ok": 20,
+    "fail": 0,
+    "rps": 6.967853593978178,
+    "rtf_agg": 146.98005613317304,
+    "latency_ms": {
+      "min": 109.10177230834961,
+      "p50": 119.7052001953125,
+      "p90": 124.36270713806152,
+      "p95": 127.01296806335449,
+      "p99": 127.01296806335449,
+      "max": 127.01296806335449,
+      "avg": 119.05255317687988
+    },
+    "routes": {
+      "-": 20
+    },
+    "rtf_single_mean": 177.27119303760912
+  }
+}
