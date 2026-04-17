@@ -11,6 +11,14 @@ Only this backend was active on the GPU during the run. vLLM was started with `g
 
 ## Observations
 
+## Commands
+
+```bash
+./bench.py --mode stt --server http://stt-node:5000 --profile sustained --rps 8 --duration 300 --corpus ./corpora/uttera-stt-internal --output results/.../vllm-sustained.json
+```
+
+`--rps 8` is the protocol-mandated `0.5 × rps_burst@64` (burst@64 measured 15.94 rps on this corpus).
+
 Numbers are almost indistinguishable from Run 2 (same vLLM, LibriSpeech corpus) from N=64 upwards:
 
 | Profile | Run 2 (LibriSpeech) RPS | Run 4 (Spanish) RPS | Delta |
@@ -25,6 +33,8 @@ Numbers are almost indistinguishable from Run 2 (same vLLM, LibriSpeech corpus) 
 **Above N=64 vLLM is effectively duration-insensitive.** Longer clips produce more tokens to decode, but continuous batching keeps every decoder step fully utilised; the wall-clock time per request grows proportionally to the tokens generated, which is why p50 scales (3 s at N=64 → 43 s at N=1024) but RPS stays locked around 18.
 
 At low N (latency / burst 8) the per-request time is dominated by the fixed pipeline cost — feature extraction, encoder forward — which the 2× longer clips amplify.
+
+**Sustained @ 8 rps / 5 min**: 2400/2400 succeeded, p50 114 ms / p95 123 ms / p99 139 ms. p95-per-minute: `122, 123, 123, 122, 123` — exceptionally flat. Continuous batching keeps every minute indistinguishable from the next. vLLM comes out of the gate fully warm and does not drift.
 
 ## Anomalies
 

@@ -1,0 +1,69 @@
+{
+  "schema_version": "1.0.0",
+  "run_id": "89814629-8d03-4164-9bc1-f421ec1c50ef",
+  "run_started_at": "2026-04-17T05:20:17.148358+00:00",
+  "run_finished_at": "2026-04-17T05:25:17.772493+00:00",
+  "node": {
+    "host": "openclaw",
+    "os": "Linux 6.17.0-20-generic",
+    "gpu": "NVIDIA GeForce RTX 5090",
+    "vram_total_gb": 31.8427734375,
+    "vram_free_gb_at_start": 26.4482421875,
+    "driver": "590.48.01",
+    "cuda": "13.1",
+    "shared_gpu": false,
+    "cold_start": false
+  },
+  "service": {
+    "repo": "unknown",
+    "commit": "0000000",
+    "protocol_doc": "uttera/uttera-infra:benchmarks/PROTOCOL.md",
+    "model": "medium",
+    "engine": "unknown",
+    "config": {}
+  },
+  "corpus": {
+    "id": "librispeech-test-clean",
+    "n_clips": 2620,
+    "total_audio_seconds": 19452.480625,
+    "sha256_manifest": "18dbc9a7e507b5ea64f468dae9742e18ccdb722da18b81618db418041c98ca36",
+    "clip_duration_mean": 7.4246109255725194,
+    "clip_duration_min": 1.285,
+    "clip_duration_max": 34.955
+  },
+  "profile": {
+    "kind": "sustained",
+    "rps": 4.0,
+    "duration_s": 300,
+    "warmup": 3
+  },
+  "command": "bench.py --mode stt --server http://127.0.0.1:5000 --profile sustained --rps 4 --duration 300 --corpus ./corpora/librispeech-test-clean --output ./results/run1-hotcold-sustained-librispeech.json",
+  "raw_csv_path": "run1-hotcold-sustained-librispeech.csv",
+  "metrics": {
+    "wall_s": 300.62411975860596,
+    "ok": 1200,
+    "fail": 0,
+    "rps": 3.991695679520231,
+    "rtf_agg": 30.33713851644108,
+    "latency_ms": {
+      "min": 74.64957237243652,
+      "p50": 236.1922264099121,
+      "p90": 812.7174377441406,
+      "p95": 1125.9486675262451,
+      "p99": 1646.040916442871,
+      "max": 2187.199354171753,
+      "avg": 374.1164751847585
+    },
+    "routes": {
+      "HOT": 1200
+    },
+    "sustained_p95_drift": [
+      1628.7963390350342,
+      619.9178695678711,
+      753.7508010864258,
+      522.4053859710693,
+      1153.1062126159668,
+      0.0
+    ]
+  }
+}

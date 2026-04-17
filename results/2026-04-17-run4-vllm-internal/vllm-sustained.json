@@ -1,0 +1,73 @@
+{
+  "schema_version": "1.0.0",
+  "run_id": "b9f6e465-05a8-404e-ae4d-89e22bdb6e97",
+  "run_started_at": "2026-04-17T05:39:05.243419+00:00",
+  "run_finished_at": "2026-04-17T05:44:05.643686+00:00",
+  "node": {
+    "host": "openclaw",
+    "os": "Linux 6.17.0-20-generic",
+    "gpu": "NVIDIA GeForce RTX 5090",
+    "vram_total_gb": 31.8427734375,
+    "vram_free_gb_at_start": 0.841796875,
+    "driver": "590.48.01",
+    "cuda": "13.1",
+    "shared_gpu": false,
+    "cold_start": false
+  },
+  "service": {
+    "repo": "unknown",
+    "commit": "0000000",
+    "protocol_doc": "uttera/uttera-infra:benchmarks/PROTOCOL.md",
+    "model": "openai/whisper-large-v3-turbo",
+    "engine": "vllm",
+    "config": {
+      "max_num_seqs": 64,
+      "max_model_len": 448,
+      "gpu_memory_utilization": 0.9
+    }
+  },
+  "corpus": {
+    "id": "uttera-stt-internal",
+    "n_clips": 160,
+    "total_audio_seconds": 3065.4431875,
+    "sha256_manifest": "34d7c5af847f4817a82eee06e078f83b23a4872cf4efd47fb21157571e06496f",
+    "clip_duration_mean": 19.159019921875,
+    "clip_duration_min": 13.323375,
+    "clip_duration_max": 27.435375
+  },
+  "profile": {
+    "kind": "sustained",
+    "rps": 8.0,
+    "duration_s": 300,
+    "warmup": 3
+  },
+  "command": "bench.py --mode stt --server http://127.0.0.1:5000 --profile sustained --rps 8 --duration 300 --corpus ./corpora/uttera-stt-internal --output ./results/run4-vllm-sustained-internal.json",
+  "raw_csv_path": "run4-vllm-sustained-internal.csv",
+  "metrics": {
+    "wall_s": 300.4002525806427,
+    "ok": 2400,
+    "fail": 0,
+    "rps": 7.989340819065117,
+    "rtf_agg": 153.0679399151177,
+    "latency_ms": {
+      "min": 101.68600082397461,
+      "p50": 113.88039588928223,
+      "p90": 121.17671966552734,
+      "p95": 123.07858467102051,
+      "p99": 139.32418823242188,
+      "max": 151.14665031433105,
+      "avg": 114.576069911321
+    },
+    "routes": {
+      "-": 2400
+    },
+    "sustained_p95_drift": [
+      122.85828590393066,
+      123.10385704040527,
+      123.81625175476074,
+      122.99776077270508,
+      123.02350997924805,
+      0.0
+    ]
+  }
+}

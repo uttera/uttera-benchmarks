@@ -1,0 +1,73 @@
+{
+  "schema_version": "1.0.0",
+  "run_id": "61636bfe-aaec-499a-a937-d7a801fd8615",
+  "run_started_at": "2026-04-17T05:33:33.537248+00:00",
+  "run_finished_at": "2026-04-17T05:38:33.943878+00:00",
+  "node": {
+    "host": "openclaw",
+    "os": "Linux 6.17.0-20-generic",
+    "gpu": "NVIDIA GeForce RTX 5090",
+    "vram_total_gb": 31.8427734375,
+    "vram_free_gb_at_start": 0.841796875,
+    "driver": "590.48.01",
+    "cuda": "13.1",
+    "shared_gpu": false,
+    "cold_start": false
+  },
+  "service": {
+    "repo": "unknown",
+    "commit": "0000000",
+    "protocol_doc": "uttera/uttera-infra:benchmarks/PROTOCOL.md",
+    "model": "openai/whisper-large-v3-turbo",
+    "engine": "vllm",
+    "config": {
+      "max_num_seqs": 64,
+      "max_model_len": 448,
+      "gpu_memory_utilization": 0.9
+    }
+  },
+  "corpus": {
+    "id": "librispeech-test-clean",
+    "n_clips": 2620,
+    "total_audio_seconds": 19452.480625,
+    "sha256_manifest": "18dbc9a7e507b5ea64f468dae9742e18ccdb722da18b81618db418041c98ca36",
+    "clip_duration_mean": 7.4246109255725194,
+    "clip_duration_min": 1.285,
+    "clip_duration_max": 34.955
+  },
+  "profile": {
+    "kind": "sustained",
+    "rps": 8.0,
+    "duration_s": 300,
+    "warmup": 3
+  },
+  "command": "bench.py --mode stt --server http://127.0.0.1:5000 --profile sustained --rps 8 --duration 300 --corpus ./corpora/librispeech-test-clean --output ./results/run2-vllm-sustained-librispeech.json",
+  "raw_csv_path": "run2-vllm-sustained-librispeech.csv",
+  "metrics": {
+    "wall_s": 300.40661454200745,
+    "ok": 2400,
+    "fail": 0,
+    "rps": 7.989171622132825,
+    "rtf_agg": 59.37289559916097,
+    "latency_ms": {
+      "min": 64.27907943725586,
+      "p50": 85.44063568115234,
+      "p90": 102.16236114501953,
+      "p95": 110.16988754272461,
+      "p99": 125.97179412841797,
+      "max": 234.04860496520996,
+      "avg": 87.68578519423802
+    },
+    "routes": {
+      "-": 2400
+    },
+    "sustained_p95_drift": [
+      110.09907722473145,
+      108.85024070739746,
+      114.28952217102051,
+      105.0724983215332,
+      113.96098136901855,
+      0.0
+    ]
+  }
+}
