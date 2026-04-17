@@ -37,7 +37,7 @@ jobs:
           import json
           with open('schemas/bench-result.schema.json') as f:
               s = json.load(f)
-          assert s.get('\$schema', '').startswith('https://json-schema.org/'), 'Not a JSON Schema document'
+          assert s.get('$schema', '').startswith('https://json-schema.org/'), 'Not a JSON Schema document'
           assert s['type'] == 'object', 'Schema root is not an object'
           for req in ('schema_version', 'run_id', 'node', 'service', 'corpus', 'profile', 'command', 'metrics'):
               assert req in s['required'], f'Schema missing required field: {req}'
@@ -45,9 +45,9 @@ jobs:
           "
       - name: Validate checked-in corpus
         run: |
-          PROMPTS=\$(ls corpora/uttera-tts-40w/prompt_*.txt 2>/dev/null | wc -l)
-          echo "TTS prompts: \$PROMPTS"
-          test "\$PROMPTS" -eq 40 || { echo "Expected 40 prompt files in corpora/uttera-tts-40w/"; exit 1; }
+          PROMPTS=$(ls corpora/uttera-tts-40w/prompt_*.txt 2>/dev/null | wc -l)
+          echo "TTS prompts: $PROMPTS"
+          test "$PROMPTS" -eq 40 || { echo "Expected 40 prompt files in corpora/uttera-tts-40w/"; exit 1; }
           echo "Corpus uttera-tts-40w OK."
       - name: Validate every result JSON against the schema
         run: |
