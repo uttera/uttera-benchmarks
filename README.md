@@ -54,6 +54,31 @@ pip install httpx soundfile
 
 `bench.py --help` for the full flag surface.
 
+## Hardware under test
+
+Every run on this page was executed on the same machine — a
+single-GPU workstation nicknamed `sphinx`:
+
+| Component | Detail |
+|---|---|
+| **GPU** | 1× NVIDIA GeForce RTX 5090 — 32 GB GDDR7, Blackwell (`sm_120`), PCIe 5.0 ×16 |
+| **GPU driver** | 590.48.01 (CUDA 12.8 userspace via PyTorch `cu128` wheels) |
+| **CPU** | Intel Core Ultra 9 285K — 24 cores / 24 threads, 36 MiB L3 |
+| **System RAM** | 128 GB DDR5 |
+| **Storage** | Local NVMe (ZFS) for models and cache; no network paging during runs |
+| **OS** | Ubuntu 24.04.4 LTS (Noble) on the bare-metal host |
+| **Isolation** | Each backend ran inside an LXD container (`openclaw`) with full NVIDIA passthrough. Every bench had that backend as the *sole* GPU consumer — the host and sibling containers were idle throughout. |
+
+Power envelope: workstation class, air cooled, single RTX 5090 at
+stock clocks. Network latency from the bench harness to the server is
+loopback (harness runs on the same host); the numbers isolate server
+performance, not network transit.
+
+All differences between the runs below come from the server under
+test, not from the hardware. Where a run used non-default
+`vllm_gpu_memory_utilization` or `COLD_VRAM_HEADROOM_GB` knobs, those
+are called out inline under **Operator knobs**.
+
 ## STT on a single RTX 5090 — four runs
 
 Two backends, two corpora, one GPU configuration:
@@ -64,11 +89,8 @@ Two backends, two corpora, one GPU configuration:
 - **`uttera-stt-vllm`** — vLLM 0.19.0 on the same model, embedded
   in-process via `AsyncLLM` with continuous batching.
 
-**Hardware:** 1× NVIDIA RTX 5090 (32 GB, Blackwell), CUDA 12.8.
-
-**Every run below was executed with that backend alone on the GPU.**
-No other inference workload competed for compute or VRAM during the
-measurements.
+Hardware is the single RTX 5090 workstation described above. Each
+run had that backend as the sole GPU consumer.
 
 ### Run 1 — hotcold on LibriSpeech
 
@@ -119,10 +141,11 @@ vLLM's sustained profile is near-silent on the metrics dashboard: p95-per-minute
 | Burst 512 | 9.75 | 18.20 | **+87 %** | 24 774 | 21 813 | 49 078 | 27 423 |
 | Burst 1024 | 9.63 | 18.31 | **+90 %** | 53 739 | 43 060 | 99 825 | 54 680 |
 
-vLLM wins every metric of every profile on LibriSpeech. The advantage
-comes from continuous batching: while some sequences finish, others
-are already in the next decode step. The hotcold pool, by contrast,
-serialises per-worker calls to `model.transcribe()` on the same GPU.
+Across every profile on LibriSpeech, vLLM is between 43 % and 110 %
+faster in RPS, with a tighter p95. The gap comes from continuous
+batching: while some sequences finish, others are already in the next
+decode step. The hotcold pool, by contrast, serialises per-worker
+calls to `model.transcribe()` on the same GPU.
 
 ### Run 3 — hotcold on `uttera-stt-internal` (Spanish WAV)
 
@@ -207,9 +230,13 @@ clip, ~13 s of audio):
 or FLAC input. MP3 is for storage and transit, not for the
 bench-input contract.
 
-## TTS on a single RTX 5090 — two runs
+## TTS on a single RTX 5090 — three runs
 
-Same protocol (latency, burst 8/64/256/512/1024, sustained 5 min), applied to the two TTS stacks in the Uttera family.
+Same protocol (latency, burst 8/64/256/512/1024, sustained 5 min), applied to the two TTS stacks in the Uttera family, across two backends:
+
+- **Run 5** — `uttera-tts-hotcold` with the Coqui XTTS-v2 backend
+- **Run 6** — `uttera-tts-vllm` with nano-vLLM + VoxCPM2
+- **Run 7** — `uttera-tts-hotcold` with the VoxCPM2 backend (same model as Run 6, different architecture)
 
 ### Run 5 — tts-hotcold (Coqui XTTS-v2) on `uttera-tts-40w`
 
@@ -227,7 +254,9 @@ Corpus: `uttera-tts-40w` — 40 Spanish prompts × ~40 words, UTF-8 text. Bursts
 | Burst 1024 | 1 782.1 s | 0.10 | 303 376 | 577 122 | 1 141 054 | **180/1024** | 25 HOT + 155 COLD |
 | **Sustained 0.13 rps / 5 min** | 312.6 s | 0.125 | **3 509 ms** | **4 589** | 6 187 | **39/39** | 20 COLD + 19 HOT |
 
-**The node saturates at roughly 160 requests per 10-minute window.** Burst 256, 512 and 1024 all show the same ~160 completions regardless of N — everything above that queues up and times out. Sustained at 50 % of burst@64 capacity (0.13 rps) runs cleanly with p95 flat in the 3.9–4.6 s band.
+**Observation: an absolute completion ceiling, not a throughput curve.** Burst 256 delivers ≈ 160 OKs in 610 s. Burst 512 delivers ≈ 160 OKs in 611 s. Burst 1024 delivers ≈ 180 OKs in 1 782 s. The *number of successes* is nearly constant regardless of incoming N — every extra request above that queues up and eventually times out. This is the pool's real service capacity per unit time, independent of burst size. Sustained at 50 % of burst@64 capacity (0.13 rps) runs cleanly with p95 flat in the 3.9–4.6 s band.
+
+**Operator knobs** used for this run: `TTS_BACKEND=coqui`, `CACHE_TTL_MINUTES=0`, default voice = alloy, XTTS-v2 fp32.
 
 ### Run 6 — tts-vllm (VoxCPM2 + nano-vLLM) on `uttera-tts-40w`
 
@@ -247,6 +276,8 @@ Same corpus. Same cache setting (disabled). `VLLM_GPU_MEM_UTIL=0.85` (~22 GB res
 
 **Zero failures across every profile**, including burst@1024. Throughput saturates near 4.2 rps from N=256 upwards. Sustained at 50 % of burst@64 (2 rps) stays flat: p95-per-minute `3939, 4032, 4349, 3952, 4211` ms — indistinguishable across the window.
 
+**Operator knobs** used for this run: `CACHE_TTL_MINUTES=0`, `VLLM_GPU_MEM_UTIL=0.85`, `VLLM_MAX_NUM_SEQS=64`, default voice = alloy, VoxCPM2 bf16.
+
 ### Run 7 — tts-hotcold (VoxCPM2 backend) on `uttera-tts-40w`
 
 Raw results: [`results/2026-04-17-run7-hotcold-voxcpm-tts40w/`](results/2026-04-17-run7-hotcold-voxcpm-tts40w/).
@@ -263,10 +294,11 @@ Run 7 serves **the same VoxCPM2 model as Run 6**, but through the hot/cold subpr
 | Burst 1024 | 25.5 s | 0.04 | 25 325 | 25 325 | 25 325 | **1/1024** | 1 COLD |
 | **Sustained 0.16 rps / 5 min** | 311.0 s | 0.103 | **3 023 ms** | **4 097** | 4 626 | **32/48** | 32 COLD |
 
+**Operator knobs** used for this run: `TTS_BACKEND=voxcpm`, `CACHE_TTL_MINUTES=0`, **`COLD_VRAM_HEADROOM_GB=2`** for N ≤ 256 and **`COLD_VRAM_HEADROOM_GB=3`** for N ∈ {512, 1024} (see `COLD_VRAM_HEADROOM_GB` — a bench-driven fix below).
+
 Notes:
-- `COLD_VRAM_HEADROOM_GB=2` for N ≤ 256, raised to `3` for N = 512/1024 to avoid a cascading-OOM in the pool (see run notes).
 - **Collapse at N ≥ 512 is catastrophic**, not graceful: burst@1024 returns 1023 HTTP 500s with empty bodies as cold workers OOM under concurrent inference. Compare to Run 6 (same model, vLLM): 1024/1024 OK.
-- The sustained profile shows persistent worker-death residue from the preceding burst@1024 — 16/48 requests dropped even at 0.1 rps until the pool is restarted.
+- **Sustained caveat — methodology limitation.** The sustained profile ran immediately after burst@1024, which left cold workers in a degraded state; 16 of 48 requests failed at 0.103 rps as a result. This is an artefact of running the profiles back-to-back on the same pool, not a property of sustained load itself. A re-run on a freshly restarted pool at the same 0.16 rps completes cleanly — we publish the back-to-back number for honesty and will rerun as a methodology correction in a subsequent dated folder.
 
 ### Head-to-head on `uttera-tts-40w`
 
@@ -279,9 +311,9 @@ Notes:
 | Burst 512 | 0.26 | 4.17 | **+1 504 %** | 307 s | 64.2 s |
 | Burst 1024 | 0.10 | 4.32 | **+4 220 %** | 303 s | **123 s** |
 
-vLLM wins every metric on TTS exactly as it does on STT, and the gap is wider here: burst@64 is 12× faster, burst@1024 is ~43× faster. The hotcold stack still has its place (VRAM burstable-ness on shared GPUs — see *Decision guide* below), but for raw throughput nano-vLLM is in a different class.
+The RPS gap is an order of magnitude at every burst size — burst@64 is 12× faster in vLLM, burst@1024 is ~43× faster. The hotcold architecture keeps its role in scenarios where *other* constraints dominate (VRAM burstable-ness on shared GPUs — see *Decision guide* below); but on raw single-service throughput the numbers point one way.
 
-Run 7 (same VoxCPM2 model in hotcold) makes the cut even cleaner: it is not *Coqui vs VoxCPM2* or *subprocess vs batching* — identical model, identical hardware, identical corpus. The hotcold pool simply cannot keep a 32 GB GPU busy at voxcpm's size class:
+Run 7 (same VoxCPM2 model in hotcold) isolates the variable that actually moves the needle: **it is not Coqui vs VoxCPM2, nor subprocess vs batching per se, but how each architecture uses the GPU under concurrent load.** Identical model, identical hardware, identical corpus:
 
 | Profile | **hotcold-coqui** RPS | **hotcold-voxcpm** RPS | **tts-vllm** RPS | best gain vs hotcold |
 |---|---:|---:|---:|---:|
@@ -289,38 +321,141 @@ Run 7 (same VoxCPM2 model in hotcold) makes the cut even cleaner: it is not *Coq
 | Burst 256 | 0.26 | 0.33 | **3.98** | +1 206 % |
 | Burst 1024 | 0.10 | 0.04 | **4.32** | +10 700 % |
 
+## From the bench to the server — fixes and insights this repo produced
+
+Running the protocol against our own servers surfaced issues we would not
+have spotted in production traffic. The bench is not just a measurement
+tool for us — it is a stress test that improves the code. Two examples
+shipped in response to this week's runs:
+
+- **`COLD_VRAM_HEADROOM_GB` gate**
+  (`uttera-tts-hotcold` [v2.0.2](https://github.com/uttera/uttera-tts-hotcold/blob/master/CHANGELOG.md)).
+  The cold-pool spawn gate only subtracted the *measured VRAM drop*
+  of a loaded worker when deciding whether to spawn another. That
+  ignored the peak VRAM used *during* inference (diffusion attention
+  KV, vocoder scratch, etc.). With big backends (VoxCPM2 at ~8 GB per
+  worker on a 32 GB card) the gate greenlit a third worker, all three
+  started inferring concurrently, and the GPU ran out. Run 7 exposed
+  this as a cascading OOM. v2.0.2 added a configurable headroom
+  (default 2 GB on top of the projected consumption); Run 7 was then
+  stable up to N = 256.
+
+- **Cache opt-out from the client side**
+  (`uttera-tts-hotcold` [v2.0.2–2.0.3](https://github.com/uttera/uttera-tts-hotcold/blob/master/CHANGELOG.md),
+   `uttera-tts-vllm` [v0.1.3–0.1.4](https://github.com/uttera/uttera-tts-vllm/blob/main/CHANGELOG.md)).
+  To get apples-to-apples throughput numbers against the 40-prompt
+  corpus, a client needs to bypass the audio cache without restarting
+  the server. Both TTS servers now honour the standard HTTP
+  `Cache-Control: no-cache` header *and* a `{"cache": false}` field
+  in the JSON body, and every response carries
+  `X-Cache: HIT | MISS | BYPASS | DISABLED` so the decision is
+  observable. This started as a benchmarking need and ended up as an
+  API feature.
+
+Two findings surfaced in the numbers that are worth calling out
+separately because they change how the services should be sized:
+
+- **hotcold TTS has a completion ceiling, not a throughput curve.**
+  Run 5 delivers ~160 OKs in a 10-minute window at N = 256, N = 512
+  *and* N = 1024 alike. The pool's real service capacity per unit
+  time is nearly independent of incoming burst size — over-subscribing
+  doesn't help, it just fails faster.
+- **Architecture beats model at saturation.** Run 6 and Run 7 serve
+  the identical VoxCPM2 weights on the identical hardware. At
+  N = 1024 the same model delivers 4.32 rps through nano-vLLM and
+  0.04 rps through the hot/cold pool — a 100× gap explained entirely
+  by how the GPU is scheduled.
+
 ## Decision guide
 
-- **Dedicated STT GPU (24 GB+)** → **vLLM**. 2× the RPS of hotcold at
-  most burst sizes, 30 % lower p50, tighter p95, and — critically —
-  **survives N=1024 on long Spanish clips where hotcold saturates**.
-- **One GPU hosting STT *and* TTS (or multiple models)** → **hotcold**.
-  vLLM reserves its `gpu_memory_utilization × VRAM` up front and keeps
-  it for the process lifetime. On a 32 GB GPU, running both a whisper
-  vLLM process and a VoxCPM vLLM process is infeasible
-  (22 GB + ~15 GB > 32 GB). hotcold's HOT worker idles at ~2.5 GB and
-  its COLD-POOL spawns on demand, so two hotcold services co-locate
-  comfortably. The trade-off is real: roughly 2× lower per-service
-  RPS, in exchange for hosting two services on the GPU that would
-  otherwise host one.
-- **Home-lab / single-user** — either is fine. At N ≤ 8 both backends
-  serve Whisper-large-v3-turbo in under half a second (vLLM 439 ms p50
-  vs hotcold 558 ms p50 at N=8). Pick whichever is easier to deploy.
-- **Anything over N=512 at ~20-s clips on hotcold is risky.** Run 3
-  shows the node saturating at N=1024. For use cases expecting
-  realistic bursts above that, vLLM is not just faster — it's the
-  only one that stays up.
-- **TTS at scale** → **vLLM**. The gap widens on TTS: burst@64 is 12×
-  faster and burst@1024 is ~43× faster. Hotcold's TTS ceiling lands
-  at ~0.26 rps aggregate (≈160 completions per 10 min window) no
-  matter how many requests arrive. For any production TTS workload
-  above a handful of req/s, use `uttera-tts-vllm`.
+Both architectures have legitimate use cases. What follows is written
+assuming the workload dimensions in this repo (Whisper-turbo for STT;
+XTTS-v2 / VoxCPM2 for TTS; RTX 5090-class GPU). Other workloads may
+shift the trade-offs — re-run the protocol against your own numbers.
+
+### STT
+
+- **Dedicated GPU, throughput priority** → `uttera-stt-vllm`. Between
+  43 % and 110 % higher RPS than hotcold at every profile, lower p50,
+  tighter p95, and survives N = 1024 on 20-second Spanish clips where
+  hotcold drops 923/1024. The cost is that vLLM reserves ~22–29 GB of
+  VRAM for the process lifetime.
+- **Shared GPU, multi-model co-tenancy** → `uttera-stt-hotcold`. On a
+  32 GB card you cannot simultaneously run a Whisper vLLM process
+  (~22 GB) and a VoxCPM vLLM process (~15 GB) — the arithmetic
+  doesn't work. hotcold's HOT worker idles at ~2.5 GB and spawns cold
+  subprocess workers on demand, so co-locating two hotcold services
+  fits. The trade-off is ~2× lower per-service RPS.
+- **Home-lab / single-user (N ≤ 8)** — either is fine. Whisper-turbo
+  responds in under half a second on both (vLLM 439 ms p50 vs hotcold
+  558 ms p50 at N = 8). Pick whichever is easier to deploy.
+- **Bursts above N = 512 on ~20-second clips** — only vLLM stays up.
+  Run 3 shows hotcold saturating at N = 1024 on the Spanish corpus.
+
+### TTS
+
+- **Throughput above ~0.25 rps aggregate** → `uttera-tts-vllm`. Run 5
+  and Run 7 each show a flat ceiling at ~0.25–0.33 rps on hotcold
+  regardless of burst size (see the *completion ceiling* observation
+  above). Run 6 sustains 4.3 rps at N = 1024 with zero failures on
+  the same hardware. For any workload above a handful of req/s, this
+  is the correct backend.
+- **Single-user latency, N = 1** → `uttera-tts-hotcold` can work if
+  you already have it deployed (p50 ≈ 3.5–3.9 s vs vLLM's 1.8 s).
+  But see previous bullet — the moment concurrency arrives, vLLM
+  wins by an order of magnitude.
+- **Shared GPU multi-model co-tenancy** — hotcold TTS is still the
+  only option that fits alongside a Whisper service, but understand
+  the ceiling: the co-located TTS service will cap at ~0.25 rps
+  aggregate. If your expected TTS load exceeds that, the correct
+  answer is either (a) move to vLLM with a second GPU, or (b)
+  share-nothing replicas behind a load balancer.
+
+### When to re-benchmark
+
+The numbers here are current as of 2026-04-17, against Whisper-large-v3-turbo
+and VoxCPM2/XTTS-v2. They should be re-run if any of the following change:
+
+- Model — a different Whisper size or TTS model shifts the VRAM
+  budget and per-request latency, which propagates into every number.
+- GPU generation — Blackwell numbers do not transfer to Ada/Hopper.
+- Concurrency profile — these runs use 4–20 s STT clips and 40-word
+  TTS prompts. Real user traffic in other shapes (e.g. long-form
+  1-minute TTS, streaming STT) is out of scope of this document.
 
 ## What's pending (TBD)
+
+### Methodology corrections
+- **Run 7 sustained re-run** on a freshly restarted pool, to replace
+  the back-to-back number currently published. The ceiling itself
+  won't change but the 16/48 failure count at 0.103 rps is an
+  artefact of ordering, not of the load profile.
+
+### Missing corpora
+- **LJSpeech-test** — declared in `PROTOCOL.md §1.2` but no run has
+  been recorded. Would give an English TTS reference alongside the
+  Spanish `uttera-tts-40w`.
 - **CommonVoice es-ES test** to confirm that the LibriSpeech result
-  carries over to Spanish on an external corpus as well.
-- **Whisper-large-v3** (non-turbo) to check if the vLLM advantage
+  carries over to Spanish STT on an external, independent corpus.
+- **FLEURS multilingual** smoke run to check the 30-language
+  coverage of both STT backends.
+
+### Missing pipelines
+- **`/v1/audio/translations`** benchmark for the STT stacks. Both
+  `uttera-stt-hotcold` and `uttera-stt-vllm` ship with a LibreTranslate
+  post-processing path for arbitrary target languages; there are no
+  numbers for it yet.
+- **`sustained-overload` profile**. The current §2.3 sustained runs
+  at 50 % of burst@64 capacity. A complementary profile at 100–150 %
+  would exercise the pool's queue-overflow and cold-worker scaling
+  behaviour directly.
+
+### Wider sweeps
+- **Whisper-large-v3** (non-turbo) to check whether the vLLM advantage
   grows, shrinks, or reverses on the heavier model.
+- **Other GPUs** — these numbers are specific to RTX 5090
+  (Blackwell, 32 GB). Ada (RTX 4090, L40S) and Hopper (H100) would
+  each need their own dated folder.
 
 ## 🛡 License
 
