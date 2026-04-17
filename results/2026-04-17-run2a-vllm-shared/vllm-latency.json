@@ -1,0 +1,65 @@
+{
+  "schema_version": "1.0.0",
+  "run_id": "91c75495-1e07-4440-a21f-027092fa503e",
+  "run_started_at": "2026-04-17T00:18:16.557412+00:00",
+  "run_finished_at": "2026-04-17T00:18:18.597614+00:00",
+  "node": {
+    "host": "openclaw",
+    "os": "Linux 6.17.0-20-generic",
+    "gpu": "NVIDIA GeForce RTX 5090",
+    "vram_total_gb": 31.8427734375,
+    "vram_free_gb_at_start": 2.171875,
+    "driver": "590.48.01",
+    "cuda": "13.1",
+    "shared_gpu": true,
+    "cold_start": false
+  },
+  "service": {
+    "repo": "unknown",
+    "commit": "0000000",
+    "protocol_doc": "uttera/uttera-infra:benchmarks/PROTOCOL.md",
+    "model": "openai/whisper-large-v3-turbo",
+    "engine": "vllm",
+    "config": {
+      "max_num_seqs": 32,
+      "max_model_len": 448,
+      "gpu_memory_utilization": 0.7
+    }
+  },
+  "corpus": {
+    "id": "librispeech-test-clean",
+    "n_clips": 2620,
+    "total_audio_seconds": 19452.480625,
+    "sha256_manifest": "18dbc9a7e507b5ea64f468dae9742e18ccdb722da18b81618db418041c98ca36",
+    "clip_duration_mean": 7.4246109255725194,
+    "clip_duration_min": 1.285,
+    "clip_duration_max": 34.955
+  },
+  "profile": {
+    "kind": "latency",
+    "iterations": 20,
+    "warmup": 3
+  },
+  "command": "./bench.py --mode stt --server http://127.0.0.1:5002 --profile latency --corpus ./corpora/librispeech-test-clean --shared-gpu --output /home/claw/.openclaw/agents/main/workspace/projects/coding/uttera-benchmarks/results/2026-04-17-run2a-vllm-shared/vllm-latency.json",
+  "raw_csv_path": "vllm-latency.csv",
+  "metrics": {
+    "wall_s": 2.0401880741119385,
+    "ok": 20,
+    "fail": 0,
+    "rps": 9.803017797124259,
+    "rtf_agg": 76.69394037023227,
+    "latency_ms": {
+      "min": 67.35682487487793,
+      "p50": 80.90949058532715,
+      "p90": 101.69506072998047,
+      "p95": 102.37908363342285,
+      "p99": 102.37908363342285,
+      "max": 102.37908363342285,
+      "avg": 83.54438543319702
+    },
+    "routes": {
+      "-": 20
+    },
+    "rtf_single_mean": 90.44696782311999
+  }
+}

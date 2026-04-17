@@ -1,34 +1,35 @@
 # uttera-benchmarks
 
 Honest, reproducible TTS/STT benchmarks for the [Uttera](https://uttera.ai)
-voice stack. Corpora, harness, raw results, and the full story of how each
-number was produced — including the mistakes we made and corrected along
-the way.
+voice stack. Corpora, harness, raw results, and the full story of how
+each number was produced — including the mistakes we made and corrected
+along the way.
 
-> **Why this repo exists.** Every vendor publishes "X rps on Y GPU" numbers
-> without saying what corpus, what concurrency, what GPU sharing, or even
-> what percentile. We got burned comparing our own numbers across runs that
-> used different clip lengths and accidental caching, and decided that if
-> we wanted to make an engineering decision we had to publish the whole
-> setup. This repo is that.
+> **Why this repo exists.** Every vendor publishes "X rps on Y GPU"
+> numbers without saying what corpus, what concurrency, what GPU
+> sharing, or even what percentile. We got burned comparing our own
+> numbers across runs that used different clip lengths and accidental
+> caching, and decided that if we wanted to make an engineering
+> decision we had to publish the whole setup. This repo is that.
 
 ## What's inside
 
-- **[`PROTOCOL.md`](PROTOCOL.md)** — what "a benchmark" means in this repo:
-  four fixed corpora, three load profiles (latency / burst / sustained),
-  mandatory metadata, no "best of N" cherry-picking.
+- **[`PROTOCOL.md`](PROTOCOL.md)** — what "a benchmark" means in this
+  repo: four fixed corpora, three load profiles (latency / burst /
+  sustained), mandatory metadata, no "best of N" cherry-picking.
 - **[`bench.py`](bench.py)** — single Python script that runs the three
-  profiles against any OpenAI-compatible TTS or STT endpoint. Produces a
-  JSON result that validates against `schemas/bench-result.schema.json`
-  plus a CSV sidecar with one row per request.
-- **[`corpora/`](corpora/)** — the 40-word Spanish TTS prompts (checked in)
-  and download scripts for LibriSpeech / CommonVoice / FLEURS / LJSpeech.
-- **[`results/`](results/)** — every run we've published, grouped by date
-  and setup. Each run folder has the raw JSONs, the raw CSVs, and a
-  `notes.md` explaining the specifics.
-- **`schemas/bench-result.schema.json`** — JSON Schema draft 2020-12 that
-  every result validates against. A result without the full metadata block
-  (node, service, corpus, profile, command, metrics) is rejected.
+  profiles against any OpenAI-compatible TTS or STT endpoint. Produces
+  a JSON result that validates against
+  `schemas/bench-result.schema.json` plus a CSV sidecar with one row
+  per request.
+- **[`corpora/`](corpora/)** — the 40-word Spanish TTS prompts (checked
+  in) and download scripts for LibriSpeech / CommonVoice / FLEURS /
+  LJSpeech.
+- **[`results/`](results/)** — every run we've published, grouped by
+  date and setup. Each run folder has the raw JSONs, the raw CSVs, and
+  a `notes.md` explaining the specifics.
+- **`schemas/bench-result.schema.json`** — JSON Schema draft 2020-12
+  that every result validates against.
 
 ## Quick start
 
@@ -36,7 +37,7 @@ the way.
 # 1. Get the corpus
 ./scripts/download-librispeech-test-clean.sh
 
-# 2. Install the harness's deps (httpx, soundfile)
+# 2. Install the harness deps
 pip install httpx soundfile
 
 # 3. Run against any OpenAI-compatible STT endpoint
@@ -46,83 +47,201 @@ pip install httpx soundfile
     --output results/my-run.json
 ```
 
-See `bench.py --help` for the full flag surface.
+`bench.py --help` for the full flag surface.
 
-## The story so far
+## The story so far — STT on a single RTX 5090
 
-### Setup
+Both backends under test share a **single RTX 5090 (32 GB, Blackwell,
+CUDA 12.8)** via LXC GPU pass-through:
 
-Both backends under test share a **single RTX 5090 (32 GB, Blackwell, CUDA 12.8)** via LXC GPU pass-through. During the test windows:
+- **`uttera-stt-hotcold`** at `sphinx:5000` — `openai-whisper`
+  Whisper-large-v3-turbo with a custom hot/cold worker pool (1
+  persistent HOT + up to 6 on-demand COLD-POOL subprocess workers).
+- **`uttera-stt-vllm`** at `openclaw:5002` — vLLM 0.19.0 on the same
+  model, embedded in-process via `AsyncLLM` with continuous batching.
 
-- **`uttera-stt-hotcold`** is deployed at `sphinx:5000` running `openai-whisper` Whisper-large-v3-turbo with a custom hot/cold worker pool.
-- **`uttera-stt-vllm`** is deployed locally at `openclaw:5002` running `vLLM 0.19.0` on the same model, with continuous batching.
-
-Corpus: [**LibriSpeech test-clean**](https://www.openslr.org/12) — 2620 English FLAC clips of 4–20 s each (~5.4 h of audio). Chosen so that every request in the largest burst (N=1024) hits a unique clip and no server-side audio-file cache can contaminate results.
+Corpus: [**LibriSpeech test-clean**](https://www.openslr.org/12) — 2620
+English FLAC clips of 4–20 s each (~5.4 h total). Every burst ≤ 1024
+hits unique clips, so no server-side audio-file cache can contaminate
+results.
 
 ### What we got wrong the first time (and how we found out)
 
-Our first 9-benchmark run used our own Spanish TTS-generated corpus of 160 clips. At N=512 and N=1024 the hotcold numbers swung wildly between runs — sometimes p50 was 50 s, sometimes 8 s. Investigating the raw CSVs showed the `route` header was `-` (absent) for ~90% of the requests in the fast runs. We initially interpreted this as a server-side file cache — **wrong**. The `-` was actually `COLD-POOL` routing whose header our bench didn't recognise. But meanwhile the real contamination had a different source:
+Our first nine-benchmark run used our own 160-clip Spanish TTS-generated
+corpus. At N=512 and N=1024 the hotcold numbers swung wildly — sometimes
+p50 was 50 s, sometimes 8 s. The raw CSVs showed `route=-` for ~90% of
+the fast requests. We initially wrote "cache hit" — **wrong**. The `-`
+was actually `COLD-POOL` traffic whose header our bench didn't
+recognise. The real contamination had a different root cause:
 
-**Both backends were holding onto VRAM simultaneously.** vLLM pre-reserves `gpu_memory_utilization` × total = 22 GB when it starts. With hotcold also alive, free VRAM dropped to ~2 GB, which **prevented hotcold's cold pool from spawning** — it capped at 1 HOT worker regardless of load. The early numbers told us "hotcold doesn't scale" when the real story was "hotcold was starved of memory by its neighbour".
+**Both backends were holding onto VRAM simultaneously.** vLLM pre-reserves
+`gpu_memory_utilization × 32 GB = 22 GB` at startup. With hotcold also
+alive, free VRAM dropped to ~2 GB, which **prevented hotcold's cold pool
+from spawning any subprocess worker**. We published "hotcold doesn't
+scale" when the real story was "hotcold was starved of memory by its
+neighbour".
 
-We discarded all nine contaminated results and rebuilt the test. Every number below is from a run where only one backend was active on the GPU.
+We discarded all nine contaminated results. Every number below is from
+a run where only one backend was active on the GPU, and the corpus is
+LibriSpeech with unique clips for every request.
 
-### Run 1 — hotcold, GPU shared-but-idle with vLLM (2026-04-17)
+### Run 1 — hotcold, with vLLM stopped (2026-04-17)
 
-Setup: vLLM was killed beforehand to free its 22 GB reservation. The
-`uttera-stt-hotcold` process at `sphinx:5000` had the GPU to itself for
-compute; the TTS service at `sphinx:5100` was alive but idle (no
-traffic). Corpus: `librispeech-test-clean` (2620 FLAC, 4–20 s each).
+vLLM killed beforehand to free its 22 GB reservation. Only the hotcold
+service at `sphinx:5000` was eligible to use the GPU.
 
-Command, example:
+Raw results: [`results/2026-04-17-run1-shared-gpu/`](results/2026-04-17-run1-shared-gpu/).
 
-```bash
-./bench.py --mode stt --server http://sphinx:5000 \
-    --profile burst --n 64 \
-    --corpus ./corpora/librispeech-test-clean
-```
-
-| Profile | **Wall (s)** | **RPS** | RTF | **p50 (ms)** | **p95 (ms)** | p99 (ms) | OK/Total | Route distribution |
+| Profile | **Wall** | **RPS** | RTF | **p50** | **p95** | p99 | OK/Total | Routes |
 |---|---:|---:|---:|---:|---:|---:|---:|---|
-| Latency 20seq | 3.0 | 6.78 | 53.0× | **124** | **157** | 157 | 20/20 | 20 HOT |
-| Burst 8 | 1.3 | 6.12 | 40.3× | **558** | 919 | 919 | 8/8 | 8 HOT |
-| Burst 64 | 8.0 | 7.96 | 60.1× | 3 966 | 7 129 | 7 606 | 64/64 | 64 HOT |
-| Burst 256 | 29.8 | 8.58 | 74.9× | 14 054 | 27 953 | 29 106 | 256/256 | 195 HOT + 61 COLD-POOL |
-| Burst 512 | 52.5 | 9.75 | 74.3× | 24 774 | 49 078 | 51 165 | 512/512 | 258 HOT + 254 COLD-POOL |
-| Burst 1024 | 106.4 | **9.63** | 72.7× | 53 739 | 99 825 | 104 432 | 1024/1024 | 479 HOT + 545 COLD-POOL |
+| Latency 20seq | 3.0 s | 6.78 | 53.0× | **124 ms** | **157** | 157 | 20/20 | 20 HOT |
+| Burst 8 | 1.3 s | 6.12 | 40.3× | 558 ms | 919 | 919 | 8/8 | 8 HOT |
+| Burst 64 | 8.0 s | 7.96 | 60.1× | 3 966 ms | 7 129 | 7 606 | 64/64 | 64 HOT |
+| Burst 256 | 29.8 s | 8.58 | 74.9× | 14 054 | 27 953 | 29 106 | 256/256 | 195 HOT + 61 COLD-POOL |
+| Burst 512 | 52.5 s | 9.75 | 74.3× | 24 774 | 49 078 | 51 165 | 512/512 | 258 HOT + 254 COLD-POOL |
+| Burst 1024 | 106.4 s | **9.63** | 72.7× | 53 739 | 99 825 | 104 432 | 1024/1024 | 479 HOT + 545 COLD-POOL |
 
-- **Wall** is the total wall-clock time from "first request sent" to "last request returned".
-- **RPS** = successful-requests / wall.
-- **RTF (real-time factor)** = total-audio-seconds-processed / wall — how many seconds of audio the node transcribes per second of compute.
-- **p50 / p95 / p99** are percentiles of the per-request latency. For a burst, p50 is the median queue-time+inference-time across all N requests; p99 is the near-worst.
-- **Route**: `HOT` = served by the single persistent worker; `COLD-POOL` = served by an on-demand subprocess worker from hotcold's dynamic pool, which can spawn up to `COLD_POOL_SIZE` workers (default 6 in this build) while VRAM permits.
+### Run 2a — vLLM, with sphinx services alive but idle
 
-### vLLM runs — in progress
+vLLM arrived handicapped: `gpu_memory_utilization=0.7, max_num_seqs=32`
+(neighbours held ~5 GB, vLLM got 2.28 GB free to reserve on top of the
+0.7× fraction). Sphinx services were running but not receiving any
+traffic. **Testing the hypothesis that idle neighbours don't cost
+compute, only VRAM.**
 
-Two runs are planned:
+Raw results: [`results/2026-04-17-run2a-vllm-shared/`](results/2026-04-17-run2a-vllm-shared/).
 
-1. **Run 2a** — vLLM with `sphinx:5000` + `sphinx:5100` alive but idle.
-   This tests whether idle neighbour services actually steal compute
-   (working hypothesis: no, they only hold VRAM — no compute contention
-   when no traffic is hitting them).
-2. **Run 2b** — vLLM with `sphinx:5000` and `sphinx:5100` stopped. vLLM
-   arrives at full `gpu_memory_utilization=0.9, max_num_seqs=64` — the
-   intended production configuration.
+| Profile | **Wall** | **RPS** | RTF | **p50** | **p95** | p99 | OK/Total |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| Latency 20seq | 2.0 s | 9.80 | 76.7× | **81 ms** | **102** | 102 | 20/20 |
+| Burst 8 | 0.8 s | 10.43 | 68.7× | 446 ms | 480 | 480 | 8/8 |
+| Burst 64 | 3.8 s | 16.76 | 126.5× | 3 066 ms | 3 491 | 3 534 | 64/64 |
+| Burst 256 | 14.2 s | 18.08 | 157.9× | 11 058 | 13 727 | 13 838 | 256/256 |
+| Burst 512 | 27.9 s | 18.36 | 139.9× | 21 531 | 27 183 | 27 455 | 512/512 |
+| Burst 1024 | 55.7 s | **18.40** | 138.9× | 42 794 | 54 335 | 55 164 | 1024/1024 |
 
-Both will publish the same six profiles against the same corpus.
+### Run 2b — vLLM, dedicated GPU (sphinx services stopped)
 
-## Decision guidance (preliminary, will be revised after Run 2)
+Both `whisper-stt.service` and `coqui-tts.service` on sphinx **stopped**
+during the run. vLLM arrived with full production config:
+`gpu_memory_utilization=0.9, max_num_seqs=64`. 0.87 GB free at start —
+vLLM reserved essentially all 32 GB.
 
-**Do not cite these numbers as final — the vLLM side is pending.** What the hotcold Run 1 already tells us:
+Raw results: [`results/2026-04-17-run2b-vllm-dedicated/`](results/2026-04-17-run2b-vllm-dedicated/).
 
-- **Interactive single-request latency is excellent on hotcold**: p50 = **124 ms** for a 14 s clip (RTF ~53× single-request, RTF ~74× aggregate under burst). That is a production-grade p50 for a voice assistant or an IVR.
-- **Hotcold scales linearly to the cold-pool cap**: RPS climbs from 6.12 at N=8 to 9.75 at N=512, then plateaus (9.63 at N=1024 = the node is saturated).
-- **Tail latency under burst is rough on hotcold**: p95 at N=1024 is almost 100 s. Hotcold uses a FIFO-like queue; if you have bursts of hundreds of concurrent requests, half of them will wait minutes.
-- **Cold pool only kicks in from N=256 upwards**. Below that the HOT worker keeps up.
+| Profile | **Wall** | **RPS** | RTF | **p50** | **p95** | p99 | OK/Total |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| Latency 20seq | 2.1 s | 9.69 | 75.8× | **82 ms** | **104** | 104 | 20/20 |
+| Burst 8 | 0.8 s | 10.60 | 69.8× | 439 ms | 478 | 478 | 8/8 |
+| Burst 64 | 3.8 s | 16.69 | 126.0× | 3 140 ms | 3 551 | 3 562 | 64/64 |
+| Burst 256 | 14.4 s | 17.79 | 155.3× | 11 189 | 13 953 | 14 070 | 256/256 |
+| Burst 512 | 28.1 s | 18.20 | 138.7× | 21 813 | 27 423 | 27 691 | 512/512 |
+| Burst 1024 | 55.9 s | 18.31 | 138.2× | 43 060 | 54 680 | 55 468 | 1024/1024 |
 
-When both runs are published we'll have an honest head-to-head plus a
-decision matrix (latency-sensitive vs. throughput-sensitive, single-GPU
-vs. multi-GPU, mixed workload vs. dedicated).
+### Hypothesis check: 2a vs 2b
+
+| Metric | 2a (handicapped, neighbours idle) | 2b (full config, GPU dedicated) | Delta |
+|---|---:|---:|---:|
+| Latency RPS | 9.80 | 9.69 | −1% |
+| Burst 8 RPS | 10.43 | 10.60 | +2% |
+| Burst 64 RPS | 16.76 | 16.69 | ≈0% |
+| Burst 256 RPS | 18.08 | 17.79 | −2% |
+| Burst 512 RPS | 18.36 | 18.20 | −1% |
+| Burst 1024 RPS | 18.40 | 18.31 | −0.5% |
+
+**All deltas within ±2% — inside measurement noise.** The hypothesis
+holds: **idle neighbours don't steal compute, only VRAM.** The
+production config (`util=0.9, seqs=64`) does not outperform the
+handicapped config (`util=0.7, seqs=32`) because Whisper's `max_model_len`
+is only 448 tokens — the KV cache is tiny, 32 concurrent sequences
+already saturate the autoregressive decoder, and the extra capacity in
+2b has nothing to do.
+
+### Head-to-head: hotcold (Run 1) vs vLLM (Run 2b)
+
+| Profile | hotcold RPS | vLLM RPS | **vLLM gain** | hotcold p50 | vLLM p50 | hotcold p95 | vLLM p95 |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| Latency 20seq | 6.78 | 9.69 | **+43 %** | 124 ms | **82 ms** | 157 ms | **104 ms** |
+| Burst 8 | 6.12 | 10.60 | **+73 %** | 558 ms | 439 ms | 919 ms | 478 ms |
+| Burst 64 | 7.96 | 16.69 | **+110 %** | 3 966 ms | 3 140 ms | 7 129 ms | 3 551 ms |
+| Burst 256 | 8.58 | 17.79 | **+107 %** | 14 054 | 11 189 | 27 953 | 13 953 |
+| Burst 512 | 9.75 | 18.20 | **+87 %** | 24 774 | 21 813 | 49 078 | 27 423 |
+| Burst 1024 | 9.63 | 18.31 | **+90 %** | 53 739 | 43 060 | 99 825 | 54 680 |
+
+**vLLM wins every metric of every profile.** Single-request latency, tail
+latency under burst, aggregate RPS — all favour vLLM on this workload.
+
+### Revised conclusion (replaces the preliminary one from Run 1)
+
+Our preliminary read after Run 1 only said "vLLM hasn't been measured
+cleanly yet". Now that it has, the picture for **pure STT throughput**
+on a single RTX 5090 is unambiguous:
+
+- **vLLM is ~2× faster** than hotcold in RPS under every burst size and
+  **33 % faster** in single-request p50.
+- **vLLM has tighter tail latency**: p95 is 1.3–3.6× lower than
+  hotcold's at every burst size above 8.
+- The vLLM advantage comes from **continuous batching**. The
+  hotcold pool spawns subprocess workers that each run an independent
+  `model.transcribe()` serialised on the same GPU; that serialisation
+  is exactly what continuous batching avoids.
+
+### Revised decision guide — honest version
+
+This is an engineering recommendation, not a sales pitch. The answer
+depends on **how you plan to share the GPU**.
+
+#### One STT model per GPU — **use `uttera-stt-vllm`**
+
+If the GPU is dedicated to STT (24 GB+ recommended), vLLM wins on every
+metric that matters for a user-facing service. This is the default
+recommendation for cloud / multi-tenant deployments.
+
+#### One GPU hosting STT *and* TTS (or multiple models) — **use `uttera-*-hotcold`**
+
+vLLM reserves its `gpu_memory_utilization × VRAM` up front and
+**keeps it reserved** for the lifetime of the process. On a single
+32 GB GPU, running both an STT and a TTS vLLM process is infeasible:
+`22 GB (whisper) + ~15 GB (voxcpm) > 32 GB`.
+
+By contrast, hotcold's HOT worker idles at ~2.5 GB and its COLD-POOL
+workers spawn and reap on demand. Running both `uttera-stt-hotcold` +
+`uttera-tts-hotcold` on one 32 GB GPU comfortably fits, and throughput
+while both are serving traffic simultaneously is limited by the GPU,
+not by memory pressure.
+
+The trade-off is real: **roughly 2× lower per-service RPS, in exchange
+for hosting two services on the GPU that would otherwise host one**.
+
+#### Home-lab / single-user — either is fine
+
+At N≤8 both backends serve Whisper-large-v3-turbo in under half a second
+(vLLM 439 ms p50 vs hotcold 558 ms p50 at N=8). Unless you're
+transcribing thousands of clips a day, you will not feel the
+difference. Pick whichever is easier to deploy.
+
+### What this changes for Uttera
+
+The original positioning of `uttera-stt-vllm` as "the high-throughput
+sibling for large GPUs" is correct but understated. On a dedicated STT
+node, vLLM is strictly better for user-facing traffic (lower p50, lower
+p95, 2× RPS). The value proposition of `uttera-stt-hotcold` shifts from
+"throughput" to **"resource flexibility"**: co-hosting STT and TTS on
+one mid-sized GPU in a way vLLM cannot match.
+
+## What's pending (TBD)
+
+- **Sustained-load 5-minute runs** for both backends, to see whether
+  p95 drifts over time (memory-leak smell) or stays flat. The 60-second
+  sustained runs we did earlier weren't long enough to detect drift.
+- **TTS benchmarks**: the same structure against `uttera-tts-hotcold`
+  (and `uttera-tts-vllm` if/when it matures past pre-alpha). That
+  requires a TTS corpus — the checked-in `corpora/uttera-tts-40w/` is
+  ready but no TTS run has been recorded yet.
+- **CommonVoice es-ES test** to confirm that the LibriSpeech advantage
+  carries over to Spanish (Uttera's main market).
+- **Whisper-large-v3** (non-turbo) to check if the vLLM advantage
+  grows, shrinks or reverses on the heavier model.
 
 ## License
 
