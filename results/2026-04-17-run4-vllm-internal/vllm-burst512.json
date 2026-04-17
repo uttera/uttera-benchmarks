@@ -1,0 +1,64 @@
+{
+  "schema_version": "1.0.0",
+  "run_id": "c2909ae3-edc1-4cd8-a9ba-1bd3a6cb130f",
+  "run_started_at": "2026-04-17T01:20:01.375721+00:00",
+  "run_finished_at": "2026-04-17T01:20:29.795111+00:00",
+  "node": {
+    "host": "openclaw",
+    "os": "Linux 6.17.0-20-generic",
+    "gpu": "NVIDIA GeForce RTX 5090",
+    "vram_total_gb": 31.8427734375,
+    "vram_free_gb_at_start": 2.32421875,
+    "driver": "590.48.01",
+    "cuda": "13.1",
+    "shared_gpu": true,
+    "cold_start": false
+  },
+  "service": {
+    "repo": "unknown",
+    "commit": "0000000",
+    "protocol_doc": "uttera/uttera-infra:benchmarks/PROTOCOL.md",
+    "model": "openai/whisper-large-v3-turbo",
+    "engine": "vllm",
+    "config": {
+      "max_num_seqs": 32,
+      "max_model_len": 448,
+      "gpu_memory_utilization": 0.7
+    }
+  },
+  "corpus": {
+    "id": "uttera-stt-internal",
+    "n_clips": 160,
+    "total_audio_seconds": 3065.4431875,
+    "sha256_manifest": "34d7c5af847f4817a82eee06e078f83b23a4872cf4efd47fb21157571e06496f",
+    "clip_duration_mean": 19.159019921875,
+    "clip_duration_min": 13.323375,
+    "clip_duration_max": 27.435375
+  },
+  "profile": {
+    "kind": "burst",
+    "n": 512,
+    "warmup": 3
+  },
+  "command": "./bench.py --mode stt --server http://127.0.0.1:5002 --profile burst --n 512 --corpus ./corpora/uttera-stt-internal --shared-gpu --output /home/claw/.openclaw/agents/main/workspace/projects/coding/uttera-benchmarks/results/2026-04-17-run4-vllm-internal/vllm-burst512.json",
+  "raw_csv_path": "vllm-burst512.csv",
+  "metrics": {
+    "wall_s": 28.41937780380249,
+    "ok": 512,
+    "fail": 0,
+    "rps": 18.015876474660004,
+    "rtf_agg": 346.80860865579064,
+    "latency_ms": {
+      "min": 3007.650375366211,
+      "p50": 21991.50824546814,
+      "p90": 27172.935009002686,
+      "p95": 27771.217346191406,
+      "p99": 27958.452224731445,
+      "max": 28000.5521774292,
+      "avg": 20613.40901069343
+    },
+    "routes": {
+      "-": 512
+    }
+  }
+}

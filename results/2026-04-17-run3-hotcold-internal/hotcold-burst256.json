@@ -1,0 +1,61 @@
+{
+  "schema_version": "1.0.0",
+  "run_id": "412edb21-0920-45dd-8273-3147d832dd31",
+  "run_started_at": "2026-04-17T01:14:30.724699+00:00",
+  "run_finished_at": "2026-04-17T01:15:13.446165+00:00",
+  "node": {
+    "host": "openclaw",
+    "os": "Linux 6.17.0-20-generic",
+    "gpu": "NVIDIA GeForce RTX 5090",
+    "vram_total_gb": 31.8427734375,
+    "vram_free_gb_at_start": 18.478515625,
+    "driver": "590.48.01",
+    "cuda": "13.1",
+    "shared_gpu": false,
+    "cold_start": false
+  },
+  "service": {
+    "repo": "unknown",
+    "commit": "0000000",
+    "protocol_doc": "uttera/uttera-infra:benchmarks/PROTOCOL.md",
+    "model": "turbo",
+    "engine": "unknown",
+    "config": {}
+  },
+  "corpus": {
+    "id": "uttera-stt-internal",
+    "n_clips": 160,
+    "total_audio_seconds": 3065.4431875,
+    "sha256_manifest": "34d7c5af847f4817a82eee06e078f83b23a4872cf4efd47fb21157571e06496f",
+    "clip_duration_mean": 19.159019921875,
+    "clip_duration_min": 13.323375,
+    "clip_duration_max": 27.435375
+  },
+  "profile": {
+    "kind": "burst",
+    "n": 256,
+    "warmup": 3
+  },
+  "command": "./bench.py --mode stt --server http://sphinx:5000 --profile burst --n 256 --corpus ./corpora/uttera-stt-internal --output /home/claw/.openclaw/agents/main/workspace/projects/coding/uttera-benchmarks/results/2026-04-17-run3-hotcold-internal/hotcold-burst256.json",
+  "raw_csv_path": "hotcold-burst256.csv",
+  "metrics": {
+    "wall_s": 42.72145199775696,
+    "ok": 256,
+    "fail": 0,
+    "rps": 5.992305692546241,
+    "rtf_agg": 114.82340301208754,
+    "latency_ms": {
+      "min": 314.054012298584,
+      "p50": 21032.26089477539,
+      "p90": 38146.852254867554,
+      "p95": 40321.76208496094,
+      "p99": 42104.997396469116,
+      "max": 42131.88672065735,
+      "avg": 21135.465815663338
+    },
+    "routes": {
+      "COLD-POOL": 125,
+      "HOT": 131
+    }
+  }
+}
