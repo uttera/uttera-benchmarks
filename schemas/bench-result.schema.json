@@ -1,0 +1,197 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/uttera/uttera-infra/blob/main/benchmarks/schemas/bench-result.schema.json",
+  "title": "Uttera benchmark result",
+  "description": "Canonical shape for a single benchmark run. Produced by benchmarks/bench.py and consumed by benchmarks/results/. Enforces the PROTOCOL.md metadata requirements so no result can be published without the full provenance block.",
+  "type": "object",
+  "required": ["schema_version", "run_id", "node", "service", "corpus", "profile", "command", "metrics"],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "description": "Semver of this schema. Bump minor for additions, major for breaking shape changes.",
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+    },
+    "run_id": {
+      "description": "Unique identifier for this bench run (UUIDv4 recommended).",
+      "type": "string",
+      "minLength": 8
+    },
+    "run_started_at": {
+      "description": "ISO-8601 UTC timestamp when the bench started.",
+      "type": "string",
+      "format": "date-time"
+    },
+    "run_finished_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+
+    "node": {
+      "type": "object",
+      "required": ["host", "gpu", "cuda", "os"],
+      "additionalProperties": false,
+      "properties": {
+        "host": { "type": "string", "description": "Hostname or short node label." },
+        "gpu": { "type": "string", "description": "Free-form GPU description including model + VRAM." },
+        "vram_total_gb": { "type": "number", "minimum": 0 },
+        "vram_free_gb_at_start": { "type": "number", "minimum": 0 },
+        "cuda": { "type": "string", "description": "CUDA toolkit version as reported by nvidia-smi / nvcc." },
+        "driver": { "type": "string", "description": "NVIDIA driver version." },
+        "os": { "type": "string" },
+        "shared_gpu": {
+          "description": "True if other workloads were sharing the GPU during the bench. Use false only when the node was isolated.",
+          "type": "boolean",
+          "default": false
+        },
+        "cold_start": {
+          "description": "True if the service process was started specifically for this bench (no prior traffic).",
+          "type": "boolean",
+          "default": false
+        }
+      }
+    },
+
+    "service": {
+      "type": "object",
+      "required": ["repo", "commit", "protocol_doc", "model", "engine", "config"],
+      "additionalProperties": false,
+      "properties": {
+        "repo": { "type": "string", "description": "e.g. uttera/uttera-stt-vllm" },
+        "commit": { "type": "string", "pattern": "^[0-9a-f]{7,40}$" },
+        "tag": { "type": "string", "description": "Git tag if the commit is tagged." },
+        "protocol_doc": {
+          "type": "string",
+          "description": "Reference to PROTOCOL.md at a specific commit, e.g. uttera/uttera-infra@<sha>:benchmarks/PROTOCOL.md"
+        },
+        "model": { "type": "string", "description": "Model identifier (HF repo / path / name)." },
+        "engine": { "type": "string", "description": "e.g. 'vllm 0.19.0', 'openai-whisper 20240930', 'xtts-v2 coqui-tts 0.27.5'" },
+        "config": {
+          "type": "object",
+          "description": "Engine tuning (max_num_seqs, gpu_memory_utilization, dtype, etc.). Free-form; include every knob that was not its library default.",
+          "additionalProperties": true
+        }
+      }
+    },
+
+    "corpus": {
+      "type": "object",
+      "required": ["id", "n_clips", "total_audio_seconds"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "One of the canonical IDs in PROTOCOL.md §1 (librispeech-test-clean, commonvoice-es-test, fleurs-multilingual, uttera-stt-internal, uttera-tts-40w, ljspeech-test, uttera-tts-internal) or a new canonical ID you add there first."
+        },
+        "n_clips": { "type": "integer", "minimum": 1 },
+        "total_audio_seconds": { "type": "number", "exclusiveMinimum": 0 },
+        "clip_duration_mean": { "type": "number", "exclusiveMinimum": 0 },
+        "clip_duration_min": { "type": "number", "exclusiveMinimum": 0 },
+        "clip_duration_max": { "type": "number", "exclusiveMinimum": 0 },
+        "sha256_manifest": {
+          "description": "SHA-256 of a newline-sorted list of (clip_path, sha256) pairs — binds the result to the exact bytes used.",
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      }
+    },
+
+    "profile": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": ["kind"],
+          "properties": {
+            "kind": { "const": "latency" },
+            "iterations": { "type": "integer", "minimum": 1, "default": 20 },
+            "warmup": { "type": "integer", "minimum": 0, "default": 3 }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["kind", "n"],
+          "properties": {
+            "kind": { "const": "burst" },
+            "n": { "type": "integer", "enum": [8, 64, 256] },
+            "warmup": { "type": "integer", "minimum": 0, "default": 3 }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["kind", "rps", "duration_s"],
+          "properties": {
+            "kind": { "const": "sustained" },
+            "rps": { "type": "number", "exclusiveMinimum": 0 },
+            "duration_s": { "type": "integer", "minimum": 30, "default": 300 },
+            "warmup": { "type": "integer", "minimum": 0, "default": 3 }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+
+    "command": {
+      "description": "Exact command line that produced the result. Must be re-runnable verbatim.",
+      "type": "string",
+      "minLength": 1
+    },
+
+    "raw_csv_path": {
+      "description": "Relative path (from this JSON file) to the per-request CSV with columns: clip_id,audio_seconds,latency_ms,status,route",
+      "type": "string"
+    },
+
+    "metrics": {
+      "type": "object",
+      "required": ["wall_s", "ok", "fail", "rps", "rtf_agg", "latency_ms"],
+      "additionalProperties": false,
+      "properties": {
+        "wall_s": { "type": "number", "exclusiveMinimum": 0 },
+        "ok": { "type": "integer", "minimum": 0 },
+        "fail": { "type": "integer", "minimum": 0 },
+        "rps": { "type": "number", "minimum": 0 },
+        "rtf_agg": {
+          "description": "Aggregate real-time factor: total_audio_seconds / wall_s.",
+          "type": "number",
+          "minimum": 0
+        },
+        "rtf_single_mean": {
+          "description": "Mean of per-request (audio_seconds / latency_s). Only meaningful for the latency profile.",
+          "type": "number"
+        },
+        "latency_ms": {
+          "type": "object",
+          "required": ["min", "p50", "p95", "p99", "max", "avg"],
+          "additionalProperties": false,
+          "properties": {
+            "min": { "type": "number", "minimum": 0 },
+            "p50": { "type": "number", "minimum": 0 },
+            "p90": { "type": "number", "minimum": 0 },
+            "p95": { "type": "number", "minimum": 0 },
+            "p99": { "type": "number", "minimum": 0 },
+            "max": { "type": "number", "minimum": 0 },
+            "avg": { "type": "number", "minimum": 0 }
+          }
+        },
+        "routes": {
+          "description": "Histogram of X-Route header values (hotcold sends HOT / COLD-POOL / COLD-POOL>HOT). Empty for backends that don't set it.",
+          "type": "object",
+          "additionalProperties": { "type": "integer", "minimum": 0 }
+        },
+        "vram_free_gb_at_end": { "type": "number", "minimum": 0 },
+        "sustained_p95_drift": {
+          "description": "Array of p95 latency (ms) measured at 1-minute buckets. Present only for sustained profile.",
+          "type": "array",
+          "items": { "type": "number", "minimum": 0 }
+        }
+      }
+    },
+
+    "notes": {
+      "description": "Free-form human-readable observations: anomalies, environmental changes, anything a future reader should know.",
+      "type": "string"
+    }
+  }
+}

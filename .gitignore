@@ -1,0 +1,14 @@
+venv/
+venv
+__pycache__/
+*.pyc
+.env
+
+# Big public corpora — fetched by scripts in corpora/, not checked in.
+corpora/librispeech-test-clean/
+corpora/librispeech-test-other/
+corpora/commonvoice-es-test/
+corpora/fleurs-multilingual/
+corpora/ljspeech-test/
+corpora/*.tar.gz
+corpora/*.zip
