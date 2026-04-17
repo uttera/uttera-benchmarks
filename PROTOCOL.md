@@ -78,11 +78,11 @@ result without this block is meaningless:
 
 ```yaml
 node:
-  host: sphinx
+  host: node-a
   gpu: NVIDIA RTX 5090 (32 GB, Blackwell)
   cuda: "12.8"
   driver: "580.95.05"
-  os: Ubuntu 24.04 (LXC)
+  os: Ubuntu 24.04
 service:
   repo: uttera/uttera-stt-vllm
   commit: <git sha>

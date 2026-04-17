@@ -4,7 +4,7 @@
   "run_started_at": "2026-04-17T01:14:18.789008+00:00",
   "run_finished_at": "2026-04-17T01:14:30.482810+00:00",
   "node": {
-    "host": "openclaw",
+    "host": "node-a",
     "os": "Linux 6.17.0-20-generic",
     "gpu": "NVIDIA GeForce RTX 5090",
     "vram_total_gb": 31.8427734375,
@@ -36,7 +36,7 @@
     "n": 64,
     "warmup": 3
   },
-  "command": "./bench.py --mode stt --server http://sphinx:5000 --profile burst --n 64 --corpus ./corpora/uttera-stt-internal --output /home/claw/.openclaw/agents/main/workspace/projects/coding/uttera-benchmarks/results/2026-04-17-run3-hotcold-internal/hotcold-burst64.json",
+  "command": "./bench.py --mode stt --server http://stt-node:5000 --profile burst --n 64 --corpus ./corpora/uttera-stt-internal --output ./results/2026-04-17-run3-hotcold-internal/hotcold-burst64.json",
   "raw_csv_path": "hotcold-burst64.csv",
   "metrics": {
     "wall_s": 11.693790435791016,

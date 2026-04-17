@@ -1,14 +1,14 @@
 {
   "schema_version": "1.0.0",
-  "run_id": "fe02ec04-03b8-4bb3-90b7-47d88ff27db5",
-  "run_started_at": "2026-04-16T23:50:28.901594+00:00",
-  "run_finished_at": "2026-04-16T23:50:36.941860+00:00",
+  "run_id": "76d1181d-b163-40ed-bd85-991fa82d29f5",
+  "run_started_at": "2026-04-16T23:51:07.787785+00:00",
+  "run_finished_at": "2026-04-16T23:52:00.291950+00:00",
   "node": {
-    "host": "openclaw",
+    "host": "node-a",
     "os": "Linux 6.17.0-20-generic",
     "gpu": "NVIDIA GeForce RTX 5090",
     "vram_total_gb": 31.8427734375,
-    "vram_free_gb_at_start": 25.2578125,
+    "vram_free_gb_at_start": 18.2890625,
     "driver": "590.48.01",
     "cuda": "13.1",
     "shared_gpu": false,
@@ -33,28 +33,29 @@
   },
   "profile": {
     "kind": "burst",
-    "n": 64,
+    "n": 512,
     "warmup": 3
   },
-  "command": "./bench.py --mode stt --server http://sphinx:5000 --profile burst --n 64 --corpus ./corpora/librispeech-test-clean --output results/hotcold-burst64.json",
-  "raw_csv_path": "hotcold-burst64.csv",
+  "command": "./bench.py --mode stt --server http://stt-node:5000 --profile burst --n 512 --corpus ./corpora/librispeech-test-clean --output results/hotcold-burst512.json",
+  "raw_csv_path": "hotcold-burst512.csv",
   "metrics": {
-    "wall_s": 8.040252447128296,
-    "ok": 64,
+    "wall_s": 52.50415086746216,
+    "ok": 512,
     "fail": 0,
-    "rps": 7.959949071357656,
-    "rtf_agg": 60.08021864693223,
+    "rps": 9.75160994970583,
+    "rtf_agg": 74.30346335565012,
     "latency_ms": {
-      "min": 149.92117881774902,
-      "p50": 3966.320276260376,
-      "p90": 6740.134716033936,
-      "p95": 7129.036426544189,
-      "p99": 7605.774879455566,
-      "max": 7605.774879455566,
-      "avg": 3825.509775429964
+      "min": 210.67547798156738,
+      "p50": 24773.78511428833,
+      "p90": 46808.30669403076,
+      "p95": 49078.0291557312,
+      "p99": 51164.80493545532,
+      "max": 51917.09208488464,
+      "avg": 25536.132308188826
     },
     "routes": {
-      "HOT": 64
+      "COLD-POOL": 254,
+      "HOT": 258
     }
   }
 }

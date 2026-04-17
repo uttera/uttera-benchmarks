@@ -19,7 +19,7 @@
 #              --output results/stt-vllm-burst-64.json
 #
 #   # TTS latency against the hotcold prod
-#   ./bench.py --mode tts --server http://sphinx:5100 \
+#   ./bench.py --mode tts --server http://tts-node:5000 \
 #              --profile latency \
 #              --corpus ./corpora/uttera-tts-40w \
 #              --output results/tts-hotcold-latency.json

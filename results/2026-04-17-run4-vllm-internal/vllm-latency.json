@@ -4,7 +4,7 @@
   "run_started_at": "2026-04-17T01:19:38.275625+00:00",
   "run_finished_at": "2026-04-17T01:19:41.145965+00:00",
   "node": {
-    "host": "openclaw",
+    "host": "node-a",
     "os": "Linux 6.17.0-20-generic",
     "gpu": "NVIDIA GeForce RTX 5090",
     "vram_total_gb": 31.8427734375,
@@ -40,7 +40,7 @@
     "iterations": 20,
     "warmup": 3
   },
-  "command": "./bench.py --mode stt --server http://127.0.0.1:5002 --profile latency --corpus ./corpora/uttera-stt-internal --shared-gpu --output /home/claw/.openclaw/agents/main/workspace/projects/coding/uttera-benchmarks/results/2026-04-17-run4-vllm-internal/vllm-latency.json",
+  "command": "./bench.py --mode stt --server http://127.0.0.1:5002 --profile latency --corpus ./corpora/uttera-stt-internal --shared-gpu --output ./results/2026-04-17-run4-vllm-internal/vllm-latency.json",
   "raw_csv_path": "vllm-latency.csv",
   "metrics": {
     "wall_s": 2.8703243732452393,
