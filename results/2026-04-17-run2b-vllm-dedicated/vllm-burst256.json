@@ -1,0 +1,64 @@
+{
+  "schema_version": "1.0.0",
+  "run_id": "aba0f232-c750-42f5-990a-635469a74348",
+  "run_started_at": "2026-04-17T00:22:40.224897+00:00",
+  "run_finished_at": "2026-04-17T00:22:54.617651+00:00",
+  "node": {
+    "host": "openclaw",
+    "os": "Linux 6.17.0-20-generic",
+    "gpu": "NVIDIA GeForce RTX 5090",
+    "vram_total_gb": 31.8427734375,
+    "vram_free_gb_at_start": 0.8359375,
+    "driver": "590.48.01",
+    "cuda": "13.1",
+    "shared_gpu": false,
+    "cold_start": false
+  },
+  "service": {
+    "repo": "unknown",
+    "commit": "0000000",
+    "protocol_doc": "uttera/uttera-infra:benchmarks/PROTOCOL.md",
+    "model": "openai/whisper-large-v3-turbo",
+    "engine": "vllm",
+    "config": {
+      "max_num_seqs": 64,
+      "max_model_len": 448,
+      "gpu_memory_utilization": 0.9
+    }
+  },
+  "corpus": {
+    "id": "librispeech-test-clean",
+    "n_clips": 2620,
+    "total_audio_seconds": 19452.480625,
+    "sha256_manifest": "18dbc9a7e507b5ea64f468dae9742e18ccdb722da18b81618db418041c98ca36",
+    "clip_duration_mean": 7.4246109255725194,
+    "clip_duration_min": 1.285,
+    "clip_duration_max": 34.955
+  },
+  "profile": {
+    "kind": "burst",
+    "n": 256,
+    "warmup": 3
+  },
+  "command": "./bench.py --mode stt --server http://127.0.0.1:5002 --profile burst --n 256 --corpus ./corpora/librispeech-test-clean --output /home/claw/.openclaw/agents/main/workspace/projects/coding/uttera-benchmarks/results/2026-04-17-run2b-vllm-dedicated/vllm-burst256.json",
+  "raw_csv_path": "vllm-burst256.csv",
+  "metrics": {
+    "wall_s": 14.392738580703735,
+    "ok": 256,
+    "fail": 0,
+    "rps": 17.78674701583323,
+    "rtf_agg": 155.34014252836386,
+    "latency_ms": {
+      "min": 1755.4652690887451,
+      "p50": 11189.068794250488,
+      "p90": 13818.732261657715,
+      "p95": 13953.019857406616,
+      "p99": 14070.305824279785,
+      "max": 14100.104570388794,
+      "avg": 10305.8275077492
+    },
+    "routes": {
+      "-": 256
+    }
+  }
+}
