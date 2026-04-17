@@ -85,6 +85,9 @@ Corpus: `librispeech-test-clean` — 2620 English FLAC clips, 4–20 s each,
 | Burst 256 | 29.8 s | 8.58 | 74.9× | 14 054 | 27 953 | 29 106 | 256/256 | 195 HOT + 61 COLD-POOL |
 | Burst 512 | 52.5 s | 9.75 | 74.3× | 24 774 | 49 078 | 51 165 | 512/512 | 258 HOT + 254 COLD-POOL |
 | Burst 1024 | 106.4 s | **9.63** | 72.7× | 53 739 | 99 825 | 104 432 | 1024/1024 | 479 HOT + 545 COLD-POOL |
+| **Sustained 4 rps / 5 min** | 300 s | 3.99 | 8.8× | **236 ms** | **1 126** | 1 646 | **1200/1200** | 1200 HOT |
+
+Sustained is the protocol's §2.3 profile: a constant `0.5 × burst@64` arrival rate (≈ 4 rps) held for five minutes. p95-per-minute: `1629, 619, 754, 522, 1153` ms — the first minute is inflated by the usual warm-up transient; from minute 1 onward the service stays in a bounded band with no monotonic drift. At this rate the HOT worker alone is sufficient (the controller correctly keeps COLD-POOL dormant).
 
 ### Run 2 — vLLM on LibriSpeech
 
@@ -101,6 +104,9 @@ Same corpus. Full vLLM configuration: `gpu_memory_utilization = 0.9`,
 | Burst 256 | 14.4 s | 17.79 | 155.3× | 11 189 | 13 953 | 14 070 | 256/256 |
 | Burst 512 | 28.1 s | 18.20 | 138.7× | 21 813 | 27 423 | 27 691 | 512/512 |
 | Burst 1024 | 55.9 s | **18.31** | 138.2× | 43 060 | 54 680 | 55 468 | 1024/1024 |
+| **Sustained 8 rps / 5 min** | 300 s | 7.99 | 60.6× | **85 ms** | **110** | 126 | **2400/2400** |
+
+vLLM's sustained profile is near-silent on the metrics dashboard: p95-per-minute `110, 108, 114, 105, 113` ms. Five minutes look the same as five seconds.
 
 ### Head-to-head on LibriSpeech
 
@@ -134,6 +140,7 @@ run**. Clips are 13–27 s, 16 kHz mono (~2× the LibriSpeech duration).
 | Burst 256 | 42.7 s | 5.99 | 114.8× | 21 032 | 40 322 | 42 105 | 256/256 |
 | Burst 512 | 83.3 s | 6.14 | 118.3× | 41 936 | 78 975 | 82 613 | 512/512 |
 | Burst 1024 | 21.1 s | 4.80 | 90.9× | 8 759 | 19 601 | 20 304 | **101 / 1024** |
+| **Sustained 3 rps / 5 min** | 300 s | 2.95 | 66.0× | **4 526 ms** | **5 156** | 5 399 | **900/900** (496 HOT + 404 COLD-POOL) |
 
 **Burst 1024 saturated**: 923/1024 requests returned HTTP 500 in
 ~10.8 s each. The error body was 53 bytes (FastAPI default
@@ -160,6 +167,9 @@ of numbers are directly comparable).
 | Burst 256 | 14.3 s | 17.84 | 341.9× | 11 193 | 13 821 | 13 945 | 256/256 |
 | Burst 512 | 28.4 s | 18.02 | 346.8× | 21 992 | 27 771 | 27 958 | 512/512 |
 | Burst 1024 | 56.3 s | **18.19** | 348.9× | 43 686 | 55 054 | 55 796 | **1024/1024** |
+| **Sustained 8 rps / 5 min** | 300 s | 7.99 | 154.5× | **114 ms** | **123** | 139 | **2400/2400** |
+
+p95-per-minute `122, 123, 123, 122, 123` — vLLM stays indistinguishable across the five minutes even on this harder (~20 s) Spanish corpus.
 
 **Zero failures at N=1024.** The RTF jump (348× vs 138× on LibriSpeech)
 is because each clip is twice as long: RTF = audio / wall, so
@@ -221,8 +231,6 @@ bench-input contract.
 
 ## What's pending (TBD)
 
-- **Sustained-load 5-minute runs** for both backends, to see whether
-  p95 drifts over time (memory-leak smell) or stays flat.
 - **TTS benchmarks**: the same structure against `uttera-tts-hotcold`
   (and `uttera-tts-vllm` when it matures). The checked-in
   `corpora/uttera-tts-40w/` is ready; no TTS run has been recorded

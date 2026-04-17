@@ -1,0 +1,70 @@
+{
+  "schema_version": "1.0.0",
+  "run_id": "6ad9dd9b-5bb2-4a08-aec5-1287f0416082",
+  "run_started_at": "2026-04-17T05:25:38.634270+00:00",
+  "run_finished_at": "2026-04-17T05:30:43.996141+00:00",
+  "node": {
+    "host": "openclaw",
+    "os": "Linux 6.17.0-20-generic",
+    "gpu": "NVIDIA GeForce RTX 5090",
+    "vram_total_gb": 31.8427734375,
+    "vram_free_gb_at_start": 24.0556640625,
+    "driver": "590.48.01",
+    "cuda": "13.1",
+    "shared_gpu": false,
+    "cold_start": false
+  },
+  "service": {
+    "repo": "unknown",
+    "commit": "0000000",
+    "protocol_doc": "uttera/uttera-infra:benchmarks/PROTOCOL.md",
+    "model": "medium",
+    "engine": "unknown",
+    "config": {}
+  },
+  "corpus": {
+    "id": "uttera-stt-internal",
+    "n_clips": 160,
+    "total_audio_seconds": 3065.4431875,
+    "sha256_manifest": "34d7c5af847f4817a82eee06e078f83b23a4872cf4efd47fb21157571e06496f",
+    "clip_duration_mean": 19.159019921875,
+    "clip_duration_min": 13.323375,
+    "clip_duration_max": 27.435375
+  },
+  "profile": {
+    "kind": "sustained",
+    "rps": 3.0,
+    "duration_s": 300,
+    "warmup": 3
+  },
+  "command": "bench.py --mode stt --server http://127.0.0.1:5000 --profile sustained --rps 3 --duration 300 --corpus ./corpora/uttera-stt-internal --output ./results/run3-hotcold-sustained-internal.json",
+  "raw_csv_path": "run3-hotcold-sustained-internal.csv",
+  "metrics": {
+    "wall_s": 305.3618588447571,
+    "ok": 900,
+    "fail": 0,
+    "rps": 2.947322902096791,
+    "rtf_agg": 56.500461666272784,
+    "latency_ms": {
+      "min": 426.84292793273926,
+      "p50": 4525.665760040283,
+      "p90": 5031.193494796753,
+      "p95": 5156.413793563843,
+      "p99": 5399.398326873779,
+      "max": 5669.347763061523,
+      "avg": 4522.892646524641
+    },
+    "routes": {
+      "HOT": 496,
+      "COLD-POOL": 404
+    },
+    "sustained_p95_drift": [
+      5226.9957065582275,
+      5344.050168991089,
+      4995.141267776489,
+      5169.02756690979,
+      5103.0120849609375,
+      4661.132097244263
+    ]
+  }
+}

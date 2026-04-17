@@ -22,11 +22,20 @@ done
 
 Result: 160 WAV files, 16 kHz mono 16-bit PCM, ~550 kB per file, 92 MB total. The MP3 lossy step had already happened during TTS generation and is not reversible — the conversion is lossless for the PCM data that existed inside the original MP3.
 
+## Commands
+
+```bash
+./bench.py --mode stt --server http://stt-node:5000 --profile sustained --rps 3 --duration 300 --corpus ./corpora/uttera-stt-internal --output results/.../hotcold-sustained.json
+```
+
+`--rps 3` is the protocol-mandated `0.5 × rps_burst@64` (burst@64 measured 5.47 rps on this corpus — the sustained rate is rounded to 3 to keep it integer).
+
 ## Observations
 
 - Latency single-request p50: **183 ms** on ~20 s clips (vs 124 ms on ~10 s clips from LibriSpeech in Run 1 — proportional to audio duration).
 - **Burst 1024 saturated**: 923/1024 requests returned HTTP 500 in ~10.8 s each. The error body was 53 bytes (FastAPI default "Internal Server Error"), consistent with either (a) cold-pool OOM under sustained concurrent load — each cold worker loading Whisper at ~2.5 GB, pool plus queue overhead exceeding available VRAM — or (b) the work queue hitting a hard cap.
 - Burst 512 completed 512/512 but at only **6.14 rps**, 37% below the same-N LibriSpeech run (9.75 rps). Longer clips saturate the single HOT worker faster.
+- **Sustained @ 3 rps / 5 min**: 900/900 succeeded, p50 4526 ms / p95 5156 ms / p99 5399 ms. The p95-per-minute series is `5227, 5344, 4995, 5169, 5103` ms — completely flat throughout the five minutes, no drift. Routing under sustained load: `HOT: 496, COLD-POOL: 404` — unlike Run 1 (librispeech), the longer internal clips pushed HOT past capacity fast enough that the smart-routing controller correctly spun up COLD-POOL workers and kept them warm. Steady-state behaviour is stable.
 
 ## Anomalies
 
