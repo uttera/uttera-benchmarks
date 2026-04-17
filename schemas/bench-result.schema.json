@@ -84,10 +84,14 @@
           "description": "One of the canonical IDs in PROTOCOL.md §1 (librispeech-test-clean, commonvoice-es-test, fleurs-multilingual, uttera-stt-internal, uttera-tts-40w, ljspeech-test, uttera-tts-internal) or a new canonical ID you add there first."
         },
         "n_clips": { "type": "integer", "minimum": 1 },
-        "total_audio_seconds": { "type": "number", "exclusiveMinimum": 0 },
-        "clip_duration_mean": { "type": "number", "exclusiveMinimum": 0 },
-        "clip_duration_min": { "type": "number", "exclusiveMinimum": 0 },
-        "clip_duration_max": { "type": "number", "exclusiveMinimum": 0 },
+        "total_audio_seconds": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Total audio duration across all clips. Zero is allowed for TTS corpora because the corpus is text — there is no input audio."
+        },
+        "clip_duration_mean": { "type": "number", "minimum": 0 },
+        "clip_duration_min": { "type": "number", "minimum": 0 },
+        "clip_duration_max": { "type": "number", "minimum": 0 },
         "sha256_manifest": {
           "description": "SHA-256 of a newline-sorted list of (clip_path, sha256) pairs — binds the result to the exact bytes used.",
           "type": "string",
