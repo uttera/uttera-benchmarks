@@ -207,6 +207,59 @@ clip, ~13 s of audio):
 or FLAC input. MP3 is for storage and transit, not for the
 bench-input contract.
 
+## TTS on a single RTX 5090 — two runs
+
+Same protocol (latency, burst 8/64/256/512/1024, sustained 5 min), applied to the two TTS stacks in the Uttera family.
+
+### Run 5 — tts-hotcold (Coqui XTTS-v2) on `uttera-tts-40w`
+
+Raw results: [`results/2026-04-17-run5-hotcold-tts40w/`](results/2026-04-17-run5-hotcold-tts40w/).
+
+Corpus: `uttera-tts-40w` — 40 Spanish prompts × ~40 words, UTF-8 text. Bursts above N=40 wrap the corpus modulo-N (each prompt reused up to 25 times at N=1024), which would be cache contamination with the default settings. **Cache was disabled for this run (`CACHE_TTL_MINUTES=0`)** so every request goes through real TTS inference.
+
+| Profile | **Wall** | **RPS** | **p50** | **p95** | p99 | OK/Total | Routes |
+|---|---:|---:|---:|---:|---:|---:|---|
+| Latency 20seq | 86.8 s | 0.23 | **3 928 ms** | 4 276 | 4 276 | 20/20 | 20 HOT |
+| Burst 8 | 38.7 s | 0.21 | 19 346 ms | 27 674 | 27 674 | 8/8 | 6 HOT + 2 COLD |
+| Burst 64 | 250.1 s | 0.26 | 135 087 | 232 504 | 240 167 | 64/64 | 13 HOT + 51 COLD |
+| Burst 256 | 609.8 s | 0.26 | 307 603 | 578 952 | 598 247 | **159/256** | 30 HOT + 129 COLD |
+| Burst 512 | 611.4 s | 0.26 | 307 163 | 569 368 | 596 408 | **161/512** | 30 HOT + 131 COLD |
+| Burst 1024 | 1 782.1 s | 0.10 | 303 376 | 577 122 | 1 141 054 | **180/1024** | 25 HOT + 155 COLD |
+| **Sustained 0.13 rps / 5 min** | 312.6 s | 0.125 | **3 509 ms** | **4 589** | 6 187 | **39/39** | 20 COLD + 19 HOT |
+
+**The node saturates at roughly 160 requests per 10-minute window.** Burst 256, 512 and 1024 all show the same ~160 completions regardless of N — everything above that queues up and times out. Sustained at 50 % of burst@64 capacity (0.13 rps) runs cleanly with p95 flat in the 3.9–4.6 s band.
+
+### Run 6 — tts-vllm (VoxCPM2 + nano-vLLM) on `uttera-tts-40w`
+
+Raw results: [`results/2026-04-17-run6-vllm-tts40w/`](results/2026-04-17-run6-vllm-tts40w/).
+
+Same corpus. Same cache setting (disabled). `VLLM_GPU_MEM_UTIL=0.85` (~22 GB reserved at startup).
+
+| Profile | **Wall** | **RPS** | **p50** | **p95** | p99 | OK/Total |
+|---|---:|---:|---:|---:|---:|---:|
+| Latency 20seq | 41.2 s | 0.48 | **1 795 ms** | 2 455 | 2 455 | 20/20 |
+| Burst 8 | 8.8 s | 0.91 | 3 296 ms | 3 355 | 3 355 | 8/8 |
+| Burst 64 | 20.8 s | 3.08 | 11 715 | 15 218 | 16 152 | 64/64 |
+| Burst 256 | 64.4 s | 3.98 | 33 929 | 57 675 | 58 654 | 256/256 |
+| Burst 512 | 122.7 s | 4.17 | 64 150 | 114 954 | 116 658 | 512/512 |
+| Burst 1024 | 237.1 s | **4.32** | 122 798 | 223 048 | 224 847 | **1024/1024** |
+| **Sustained 2 rps / 5 min** | 307.0 s | 1.95 | **3 253 ms** | **4 035** | 4 414 | **600/600** |
+
+**Zero failures across every profile**, including burst@1024. Throughput saturates near 4.2 rps from N=256 upwards. Sustained at 50 % of burst@64 (2 rps) stays flat: p95-per-minute `3939, 4032, 4349, 3952, 4211` ms — indistinguishable across the window.
+
+### Head-to-head on `uttera-tts-40w`
+
+| Profile | hotcold RPS | vLLM RPS | **vLLM gain** | hotcold p50 | vLLM p50 |
+|---|---:|---:|---:|---:|---:|
+| Latency 20seq | 0.23 | 0.48 | **+109 %** | 3 928 ms | **1 795 ms** |
+| Burst 8 | 0.21 | 0.91 | **+332 %** | 19 346 ms | 3 296 ms |
+| Burst 64 | 0.26 | 3.08 | **+1 084 %** | 135 s | **11.7 s** |
+| Burst 256 | 0.26 | 3.98 | **+1 431 %** | 308 s | 33.9 s |
+| Burst 512 | 0.26 | 4.17 | **+1 504 %** | 307 s | 64.2 s |
+| Burst 1024 | 0.10 | 4.32 | **+4 220 %** | 303 s | **123 s** |
+
+vLLM wins every metric on TTS exactly as it does on STT, and the gap is wider here: burst@64 is 12× faster, burst@1024 is ~43× faster. The hotcold stack still has its place (VRAM burstable-ness on shared GPUs — see *Decision guide* below), but for raw throughput nano-vLLM is in a different class.
+
 ## Decision guide
 
 - **Dedicated STT GPU (24 GB+)** → **vLLM**. 2× the RPS of hotcold at
@@ -228,13 +281,13 @@ bench-input contract.
   shows the node saturating at N=1024. For use cases expecting
   realistic bursts above that, vLLM is not just faster — it's the
   only one that stays up.
+- **TTS at scale** → **vLLM**. The gap widens on TTS: burst@64 is 12×
+  faster and burst@1024 is ~43× faster. Hotcold's TTS ceiling lands
+  at ~0.26 rps aggregate (≈160 completions per 10 min window) no
+  matter how many requests arrive. For any production TTS workload
+  above a handful of req/s, use `uttera-tts-vllm`.
 
 ## What's pending (TBD)
-
-- **TTS benchmarks**: the same structure against `uttera-tts-hotcold`
-  (and `uttera-tts-vllm` when it matures). The checked-in
-  `corpora/uttera-tts-40w/` is ready; no TTS run has been recorded
-  yet.
 - **CommonVoice es-ES test** to confirm that the LibriSpeech result
   carries over to Spanish on an external corpus as well.
 - **Whisper-large-v3** (non-turbo) to check if the vLLM advantage
