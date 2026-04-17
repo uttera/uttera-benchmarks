@@ -1,0 +1,66 @@
+{
+  "schema_version": "1.0.0",
+  "run_id": "e12d0cec-2d4e-4b0c-8ef7-23f877b68aae",
+  "run_started_at": "2026-04-17T20:05:57.287179+00:00",
+  "run_finished_at": "2026-04-17T20:11:08.292344+00:00",
+  "node": {
+    "host": "openclaw",
+    "os": "Linux 6.17.0-20-generic",
+    "gpu": "NVIDIA GeForce RTX 5090",
+    "vram_total_gb": 31.8427734375,
+    "vram_free_gb_at_start": 8.18359375,
+    "driver": "590.48.01",
+    "cuda": "13.1",
+    "shared_gpu": false,
+    "cold_start": false
+  },
+  "service": {
+    "repo": "unknown",
+    "commit": "0000000",
+    "protocol_doc": "uttera/uttera-infra:benchmarks/PROTOCOL.md",
+    "model": "tts_models/multilingual/multi-dataset/xtts_v2",
+    "engine": "unknown",
+    "config": {}
+  },
+  "corpus": {
+    "id": "uttera-tts-40w",
+    "n_clips": 40,
+    "total_audio_seconds": 0.0,
+    "sha256_manifest": "d7322718382eca7cfd7a4c1e1697b969cba78165f6f2b3d68cc5d1a3ca688b53"
+  },
+  "profile": {
+    "kind": "sustained",
+    "rps": 0.16,
+    "duration_s": 300,
+    "warmup": 3
+  },
+  "command": "bench.py --mode tts --server http://127.0.0.1:5101 --profile sustained --rps 0.16 --duration 300 --corpus ./corpora/uttera-tts-40w --output ./results/run7-tts-hotcold-voxcpm/voxcpm-sustained.json",
+  "raw_csv_path": "voxcpm-sustained.csv",
+  "metrics": {
+    "wall_s": 311.00514698028564,
+    "ok": 32,
+    "fail": 16,
+    "rps": 0.10289218783259704,
+    "rtf_agg": 0.0,
+    "latency_ms": {
+      "min": 1268.986463546753,
+      "p50": 3022.9856967926025,
+      "p90": 4033.8315963745117,
+      "p95": 4096.630811691284,
+      "p99": 4625.769853591919,
+      "max": 4625.769853591919,
+      "avg": 3093.267522752285
+    },
+    "routes": {
+      "COLD-POOL": 32
+    },
+    "sustained_p95_drift": [
+      4625.769853591919,
+      4096.630811691284,
+      3752.661943435669,
+      4033.8315963745117,
+      3787.3623371124268,
+      0.0
+    ]
+  }
+}
