@@ -1,5 +1,9 @@
 # uttera-benchmarks
 
+<p align="center">
+  <img src="docs/img/banner.png" alt="uttera.ai — The voice layer for your AI" width="800">
+</p>
+
 Honest, reproducible TTS/STT benchmarks for the
 [Uttera](https://uttera.ai) voice stack. Corpora, harness, raw results,
 and the full setup behind every number.
