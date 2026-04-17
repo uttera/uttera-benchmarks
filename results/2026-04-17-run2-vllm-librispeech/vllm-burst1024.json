@@ -1,10 +1,10 @@
 {
   "schema_version": "1.0.0",
-  "run_id": "bfb49a2b-23cf-428f-944b-f82cf4c7bceb",
-  "run_started_at": "2026-04-17T00:22:34.666676+00:00",
-  "run_finished_at": "2026-04-17T00:22:35.421474+00:00",
+  "run_id": "c260e707-5291-4c3b-a3fd-6e549ffb60f2",
+  "run_started_at": "2026-04-17T00:23:23.746558+00:00",
+  "run_finished_at": "2026-04-17T00:24:19.660203+00:00",
   "node": {
-    "host": "openclaw",
+    "host": "node-a",
     "os": "Linux 6.17.0-20-generic",
     "gpu": "NVIDIA GeForce RTX 5090",
     "vram_total_gb": 31.8427734375,
@@ -37,28 +37,28 @@
   },
   "profile": {
     "kind": "burst",
-    "n": 8,
+    "n": 1024,
     "warmup": 3
   },
-  "command": "./bench.py --mode stt --server http://127.0.0.1:5002 --profile burst --n 8 --corpus ./corpora/librispeech-test-clean --output /home/claw/.openclaw/agents/main/workspace/projects/coding/uttera-benchmarks/results/2026-04-17-run2b-vllm-dedicated/vllm-burst8.json",
-  "raw_csv_path": "vllm-burst8.csv",
+  "command": "./bench.py --mode stt --server http://127.0.0.1:5002 --profile burst --n 1024 --corpus ./corpora/librispeech-test-clean --output ./results/2026-04-17-run2-vllm-librispeech/vllm-burst1024.json",
+  "raw_csv_path": "vllm-burst1024.csv",
   "metrics": {
-    "wall_s": 0.7547852993011475,
-    "ok": 8,
+    "wall_s": 55.913631200790405,
+    "ok": 1024,
     "fail": 0,
-    "rps": 10.59904055816557,
-    "rtf_agg": 69.81463808157119,
+    "rps": 18.31395990581854,
+    "rtf_agg": 138.24706778104456,
     "latency_ms": {
-      "min": 394.1829204559326,
-      "p50": 439.46218490600586,
-      "p90": 478.1813621520996,
-      "p95": 478.1813621520996,
-      "p99": 478.1813621520996,
-      "max": 478.1813621520996,
-      "avg": 435.99793314933777
+      "min": 1670.33052444458,
+      "p50": 43059.778690338135,
+      "p90": 53469.22540664673,
+      "p95": 54680.21750450134,
+      "p99": 55467.55003929138,
+      "max": 55560.43863296509,
+      "avg": 39459.11363768391
     },
     "routes": {
-      "-": 8
+      "-": 1024
     }
   }
 }

@@ -1,10 +1,10 @@
 {
   "schema_version": "1.0.0",
-  "run_id": "c260e707-5291-4c3b-a3fd-6e549ffb60f2",
-  "run_started_at": "2026-04-17T00:23:23.746558+00:00",
-  "run_finished_at": "2026-04-17T00:24:19.660203+00:00",
+  "run_id": "09d01f5c-def7-4bca-a8bc-468bb17c7638",
+  "run_started_at": "2026-04-17T00:22:35.901441+00:00",
+  "run_finished_at": "2026-04-17T00:22:39.735456+00:00",
   "node": {
-    "host": "openclaw",
+    "host": "node-a",
     "os": "Linux 6.17.0-20-generic",
     "gpu": "NVIDIA GeForce RTX 5090",
     "vram_total_gb": 31.8427734375,
@@ -37,28 +37,28 @@
   },
   "profile": {
     "kind": "burst",
-    "n": 1024,
+    "n": 64,
     "warmup": 3
   },
-  "command": "./bench.py --mode stt --server http://127.0.0.1:5002 --profile burst --n 1024 --corpus ./corpora/librispeech-test-clean --output /home/claw/.openclaw/agents/main/workspace/projects/coding/uttera-benchmarks/results/2026-04-17-run2b-vllm-dedicated/vllm-burst1024.json",
-  "raw_csv_path": "vllm-burst1024.csv",
+  "command": "./bench.py --mode stt --server http://127.0.0.1:5002 --profile burst --n 64 --corpus ./corpora/librispeech-test-clean --output ./results/2026-04-17-run2-vllm-librispeech/vllm-burst64.json",
+  "raw_csv_path": "vllm-burst64.csv",
   "metrics": {
-    "wall_s": 55.913631200790405,
-    "ok": 1024,
+    "wall_s": 3.834001064300537,
+    "ok": 64,
     "fail": 0,
-    "rps": 18.31395990581854,
-    "rtf_agg": 138.24706778104456,
+    "rps": 16.692744453287197,
+    "rtf_agg": 125.99373784684327,
     "latency_ms": {
-      "min": 1670.33052444458,
-      "p50": 43059.778690338135,
-      "p90": 53469.22540664673,
-      "p95": 54680.21750450134,
-      "p99": 55467.55003929138,
-      "max": 55560.43863296509,
-      "avg": 39459.11363768391
+      "min": 1571.2542533874512,
+      "p50": 3140.4316425323486,
+      "p90": 3542.7238941192627,
+      "p95": 3550.81844329834,
+      "p99": 3561.6135597229004,
+      "max": 3561.6135597229004,
+      "avg": 2995.7618080079556
     },
     "routes": {
-      "-": 1024
+      "-": 64
     }
   }
 }

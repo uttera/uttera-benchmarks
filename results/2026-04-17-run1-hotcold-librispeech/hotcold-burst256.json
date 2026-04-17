@@ -1,14 +1,14 @@
 {
   "schema_version": "1.0.0",
-  "run_id": "e99f7988-3763-4151-9be2-f1071357ec0f",
-  "run_started_at": "2026-04-16T23:52:00.808530+00:00",
-  "run_finished_at": "2026-04-16T23:53:47.182915+00:00",
+  "run_id": "3b963bbe-ef16-479a-ac88-215dbd302bf7",
+  "run_started_at": "2026-04-16T23:50:37.447601+00:00",
+  "run_finished_at": "2026-04-16T23:51:07.281362+00:00",
   "node": {
-    "host": "openclaw",
+    "host": "node-a",
     "os": "Linux 6.17.0-20-generic",
     "gpu": "NVIDIA GeForce RTX 5090",
     "vram_total_gb": 31.8427734375,
-    "vram_free_gb_at_start": 13.599609375,
+    "vram_free_gb_at_start": 20.634765625,
     "driver": "590.48.01",
     "cuda": "13.1",
     "shared_gpu": false,
@@ -33,29 +33,29 @@
   },
   "profile": {
     "kind": "burst",
-    "n": 1024,
+    "n": 256,
     "warmup": 3
   },
-  "command": "./bench.py --mode stt --server http://sphinx:5000 --profile burst --n 1024 --corpus ./corpora/librispeech-test-clean --output results/hotcold-burst1024.json",
-  "raw_csv_path": "hotcold-burst1024.csv",
+  "command": "./bench.py --mode stt --server http://stt-node:5000 --profile burst --n 256 --corpus ./corpora/librispeech-test-clean --output results/hotcold-burst256.json",
+  "raw_csv_path": "hotcold-burst256.csv",
   "metrics": {
-    "wall_s": 106.37436699867249,
-    "ok": 1024,
+    "wall_s": 29.833746194839478,
+    "ok": 256,
     "fail": 0,
-    "rps": 9.62637925744629,
-    "rtf_agg": 72.6669006885509,
+    "rps": 8.58088683627274,
+    "rtf_agg": 74.94097616499582,
     "latency_ms": {
-      "min": 278.5518169403076,
-      "p50": 53739.145040512085,
-      "p90": 94539.64734077454,
-      "p95": 99824.77712631226,
-      "p99": 104432.31415748596,
-      "max": 105916.49270057678,
-      "avg": 53264.37677000649
+      "min": 158.3399772644043,
+      "p50": 14053.619384765625,
+      "p90": 25904.956579208374,
+      "p95": 27952.51202583313,
+      "p99": 29105.665922164917,
+      "max": 29432.406663894653,
+      "avg": 14401.496673002839
     },
     "routes": {
-      "COLD-POOL": 545,
-      "HOT": 479
+      "HOT": 195,
+      "COLD-POOL": 61
     }
   }
 }

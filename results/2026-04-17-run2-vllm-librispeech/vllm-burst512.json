@@ -1,17 +1,17 @@
 {
   "schema_version": "1.0.0",
-  "run_id": "be4d4bfd-5755-4666-b721-678e4637a974",
-  "run_started_at": "2026-04-17T00:18:39.282348+00:00",
-  "run_finished_at": "2026-04-17T00:19:07.176096+00:00",
+  "run_id": "f80ade3b-3d25-41e4-a290-600c7814dec1",
+  "run_started_at": "2026-04-17T00:22:55.115160+00:00",
+  "run_finished_at": "2026-04-17T00:23:23.248066+00:00",
   "node": {
-    "host": "openclaw",
+    "host": "node-a",
     "os": "Linux 6.17.0-20-generic",
     "gpu": "NVIDIA GeForce RTX 5090",
     "vram_total_gb": 31.8427734375,
-    "vram_free_gb_at_start": 2.169921875,
+    "vram_free_gb_at_start": 0.8359375,
     "driver": "590.48.01",
     "cuda": "13.1",
-    "shared_gpu": true,
+    "shared_gpu": false,
     "cold_start": false
   },
   "service": {
@@ -21,9 +21,9 @@
     "model": "openai/whisper-large-v3-turbo",
     "engine": "vllm",
     "config": {
-      "max_num_seqs": 32,
+      "max_num_seqs": 64,
       "max_model_len": 448,
-      "gpu_memory_utilization": 0.7
+      "gpu_memory_utilization": 0.9
     }
   },
   "corpus": {
@@ -40,22 +40,22 @@
     "n": 512,
     "warmup": 3
   },
-  "command": "./bench.py --mode stt --server http://127.0.0.1:5002 --profile burst --n 512 --corpus ./corpora/librispeech-test-clean --shared-gpu --output /home/claw/.openclaw/agents/main/workspace/projects/coding/uttera-benchmarks/results/2026-04-17-run2a-vllm-shared/vllm-burst512.json",
+  "command": "./bench.py --mode stt --server http://127.0.0.1:5002 --profile burst --n 512 --corpus ./corpora/librispeech-test-clean --output ./results/2026-04-17-run2-vllm-librispeech/vllm-burst512.json",
   "raw_csv_path": "vllm-burst512.csv",
   "metrics": {
-    "wall_s": 27.8937349319458,
+    "wall_s": 28.132892370224,
     "ok": 512,
     "fail": 0,
-    "rps": 18.355376260983352,
-    "rtf_agg": 139.86080600242724,
+    "rps": 18.19933738991955,
+    "rtf_agg": 138.6718506814142,
     "latency_ms": {
-      "min": 1613.9934062957764,
-      "p50": 21531.43548965454,
-      "p90": 26527.900457382202,
-      "p95": 27183.11905860901,
-      "p99": 27454.944372177124,
-      "max": 27572.838068008423,
-      "avg": 19763.889495283365
+      "min": 1588.3936882019043,
+      "p50": 21812.9243850708,
+      "p90": 26761.356353759766,
+      "p95": 27422.621488571167,
+      "p99": 27690.824508666992,
+      "max": 27799.83639717102,
+      "avg": 20042.62464493513
     },
     "routes": {
       "-": 512

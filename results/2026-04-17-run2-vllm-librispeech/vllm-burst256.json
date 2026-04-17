@@ -1,10 +1,10 @@
 {
   "schema_version": "1.0.0",
-  "run_id": "2b7dd76a-a863-4bdc-b061-2326f9030f05",
-  "run_started_at": "2026-04-17T00:22:32.126942+00:00",
-  "run_finished_at": "2026-04-17T00:22:34.191247+00:00",
+  "run_id": "aba0f232-c750-42f5-990a-635469a74348",
+  "run_started_at": "2026-04-17T00:22:40.224897+00:00",
+  "run_finished_at": "2026-04-17T00:22:54.617651+00:00",
   "node": {
-    "host": "openclaw",
+    "host": "node-a",
     "os": "Linux 6.17.0-20-generic",
     "gpu": "NVIDIA GeForce RTX 5090",
     "vram_total_gb": 31.8427734375,
@@ -36,30 +36,29 @@
     "clip_duration_max": 34.955
   },
   "profile": {
-    "kind": "latency",
-    "iterations": 20,
+    "kind": "burst",
+    "n": 256,
     "warmup": 3
   },
-  "command": "./bench.py --mode stt --server http://127.0.0.1:5002 --profile latency --corpus ./corpora/librispeech-test-clean --output /home/claw/.openclaw/agents/main/workspace/projects/coding/uttera-benchmarks/results/2026-04-17-run2b-vllm-dedicated/vllm-latency.json",
-  "raw_csv_path": "vllm-latency.csv",
+  "command": "./bench.py --mode stt --server http://127.0.0.1:5002 --profile burst --n 256 --corpus ./corpora/librispeech-test-clean --output ./results/2026-04-17-run2-vllm-librispeech/vllm-burst256.json",
+  "raw_csv_path": "vllm-burst256.csv",
   "metrics": {
-    "wall_s": 2.0642902851104736,
-    "ok": 20,
+    "wall_s": 14.392738580703735,
+    "ok": 256,
     "fail": 0,
-    "rps": 9.68855986207854,
-    "rtf_agg": 75.79847835772102,
+    "rps": 17.78674701583323,
+    "rtf_agg": 155.34014252836386,
     "latency_ms": {
-      "min": 67.05427169799805,
-      "p50": 82.27324485778809,
-      "p90": 100.13270378112793,
-      "p95": 104.04348373413086,
-      "p99": 104.04348373413086,
-      "max": 104.04348373413086,
-      "avg": 83.00994634628296
+      "min": 1755.4652690887451,
+      "p50": 11189.068794250488,
+      "p90": 13818.732261657715,
+      "p95": 13953.019857406616,
+      "p99": 14070.305824279785,
+      "max": 14100.104570388794,
+      "avg": 10305.8275077492
     },
     "routes": {
-      "-": 20
-    },
-    "rtf_single_mean": 91.15266275387668
+      "-": 256
+    }
   }
 }
