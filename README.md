@@ -232,9 +232,28 @@ bench-input contract.
 - **Whisper-large-v3** (non-turbo) to check if the vLLM advantage
   grows, shrinks, or reverses on the heavier model.
 
-## License
+## 🛡 License
 
-Apache License 2.0 — see [`LICENSE`](LICENSE).
+**Source code**: [Apache License 2.0](LICENSE). Commercial use permitted.
+
+This repository contains benchmark tooling and results only — no model
+weights are redistributed here. Each backend under test carries its own
+model licensing; see its repo's `NOTICE` for details. Local attributions
+for the harness in [NOTICE](NOTICE).
+
+Created and maintained by [Hugo L. Espuny](https://github.com/fakehec),
+with contributions acknowledged in [AUTHORS.md](AUTHORS.md).
+
+## ☕ Community
+
+If you want to follow the project or get involved:
+
+- ⭐ Star this repo to help discoverability.
+- 🐛 Report issues via the [issue tracker](../../issues).
+- 💬 Join the conversation in [Discussions](../../discussions).
+- 📰 Technical posts at [blog.uttera.ai](https://blog.uttera.ai).
+- 🌐 Uttera Cloud: [https://uttera.ai](https://uttera.ai) (EU-hosted,
+  solar-powered, subscription flat-rate).
 
 ---
 
