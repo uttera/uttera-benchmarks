@@ -113,7 +113,7 @@
           "required": ["kind", "n"],
           "properties": {
             "kind": { "const": "burst" },
-            "n": { "type": "integer", "enum": [8, 64, 256] },
+            "n": { "type": "integer", "enum": [8, 64, 256, 512, 1024] },
             "warmup": { "type": "integer", "minimum": 0, "default": 3 }
           },
           "additionalProperties": false

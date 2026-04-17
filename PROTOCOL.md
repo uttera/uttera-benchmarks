@@ -53,7 +53,7 @@ Every benchmark reports all three. Single-number results are forbidden.
 
 ### 2.2 Burst profile
 
-- **Pattern:** N requests fired simultaneously, where **N ∈ {8, 64, 256}** are all run.
+- **Pattern:** N requests fired simultaneously, where **N ∈ {8, 64, 256, 512, 1024}** are all run. Smaller values probe batching ramp-up; larger values probe saturation and tail-latency behaviour.
 - **Answers:** "What happens when a batch of requests hits at once?"
 - **Metrics to report (per N):**
   - `rps = N / wall_total`
