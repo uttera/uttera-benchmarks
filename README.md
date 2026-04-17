@@ -247,6 +247,27 @@ Same corpus. Same cache setting (disabled). `VLLM_GPU_MEM_UTIL=0.85` (~22 GB res
 
 **Zero failures across every profile**, including burst@1024. Throughput saturates near 4.2 rps from N=256 upwards. Sustained at 50 % of burst@64 (2 rps) stays flat: p95-per-minute `3939, 4032, 4349, 3952, 4211` ms — indistinguishable across the window.
 
+### Run 7 — tts-hotcold (VoxCPM2 backend) on `uttera-tts-40w`
+
+Raw results: [`results/2026-04-17-run7-hotcold-voxcpm-tts40w/`](results/2026-04-17-run7-hotcold-voxcpm-tts40w/).
+
+Run 7 serves **the same VoxCPM2 model as Run 6**, but through the hot/cold subprocess pool instead of nano-vLLM. The comparison isolates architecture from model.
+
+| Profile | **Wall** | **RPS** | **p50** | **p95** | p99 | OK/Total | Routes |
+|---|---:|---:|---:|---:|---:|---:|---|
+| Latency 20seq | 80.5 s | 0.25 | **3 527 ms** | 10 742 | 10 742 | 20/20 | 11 HOT + 9 COLD |
+| Burst 8 | 26.8 s | 0.30 | 11 764 | 19 331 | 19 331 | 8/8 | 4 HOT + 4 COLD |
+| Burst 64 | 202.9 s | 0.31 | 98 637 | 183 524 | 188 125 | 63/64 | 13 HOT + 51 COLD |
+| Burst 256 | 606.4 s | 0.33 | 303 144 | 571 264 | 586 413 | 201/256 | 51 HOT + 149 COLD + 1 COLD→HOT |
+| Burst 512 | 109.0 s | 0.28 | 59 756 | 96 941 | 101 209 | **30/512** | 9 HOT + 21 COLD |
+| Burst 1024 | 25.5 s | 0.04 | 25 325 | 25 325 | 25 325 | **1/1024** | 1 COLD |
+| **Sustained 0.16 rps / 5 min** | 311.0 s | 0.103 | **3 023 ms** | **4 097** | 4 626 | **32/48** | 32 COLD |
+
+Notes:
+- `COLD_VRAM_HEADROOM_GB=2` for N ≤ 256, raised to `3` for N = 512/1024 to avoid a cascading-OOM in the pool (see run notes).
+- **Collapse at N ≥ 512 is catastrophic**, not graceful: burst@1024 returns 1023 HTTP 500s with empty bodies as cold workers OOM under concurrent inference. Compare to Run 6 (same model, vLLM): 1024/1024 OK.
+- The sustained profile shows persistent worker-death residue from the preceding burst@1024 — 16/48 requests dropped even at 0.1 rps until the pool is restarted.
+
 ### Head-to-head on `uttera-tts-40w`
 
 | Profile | hotcold RPS | vLLM RPS | **vLLM gain** | hotcold p50 | vLLM p50 |
@@ -259,6 +280,14 @@ Same corpus. Same cache setting (disabled). `VLLM_GPU_MEM_UTIL=0.85` (~22 GB res
 | Burst 1024 | 0.10 | 4.32 | **+4 220 %** | 303 s | **123 s** |
 
 vLLM wins every metric on TTS exactly as it does on STT, and the gap is wider here: burst@64 is 12× faster, burst@1024 is ~43× faster. The hotcold stack still has its place (VRAM burstable-ness on shared GPUs — see *Decision guide* below), but for raw throughput nano-vLLM is in a different class.
+
+Run 7 (same VoxCPM2 model in hotcold) makes the cut even cleaner: it is not *Coqui vs VoxCPM2* or *subprocess vs batching* — identical model, identical hardware, identical corpus. The hotcold pool simply cannot keep a 32 GB GPU busy at voxcpm's size class:
+
+| Profile | **hotcold-coqui** RPS | **hotcold-voxcpm** RPS | **tts-vllm** RPS | best gain vs hotcold |
+|---|---:|---:|---:|---:|
+| Burst 64 | 0.26 | 0.31 | **3.08** | **+994 %** |
+| Burst 256 | 0.26 | 0.33 | **3.98** | +1 206 % |
+| Burst 1024 | 0.10 | 0.04 | **4.32** | +10 700 % |
 
 ## Decision guide
 

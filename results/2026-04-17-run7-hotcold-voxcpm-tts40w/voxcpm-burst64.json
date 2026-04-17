@@ -1,0 +1,58 @@
+{
+  "schema_version": "1.0.0",
+  "run_id": "8900c838-9062-455c-9122-6e9be3f47b42",
+  "run_started_at": "2026-04-17T19:31:07.209415+00:00",
+  "run_finished_at": "2026-04-17T19:34:30.119478+00:00",
+  "node": {
+    "host": "openclaw",
+    "os": "Linux 6.17.0-20-generic",
+    "gpu": "NVIDIA GeForce RTX 5090",
+    "vram_total_gb": 31.8427734375,
+    "vram_free_gb_at_start": 0.1162109375,
+    "driver": "590.48.01",
+    "cuda": "13.1",
+    "shared_gpu": false,
+    "cold_start": false
+  },
+  "service": {
+    "repo": "unknown",
+    "commit": "0000000",
+    "protocol_doc": "uttera/uttera-infra:benchmarks/PROTOCOL.md",
+    "model": "tts_models/multilingual/multi-dataset/xtts_v2",
+    "engine": "unknown",
+    "config": {}
+  },
+  "corpus": {
+    "id": "uttera-tts-40w",
+    "n_clips": 40,
+    "total_audio_seconds": 0.0,
+    "sha256_manifest": "d7322718382eca7cfd7a4c1e1697b969cba78165f6f2b3d68cc5d1a3ca688b53"
+  },
+  "profile": {
+    "kind": "burst",
+    "n": 64,
+    "warmup": 3
+  },
+  "command": "bench.py --mode tts --server http://127.0.0.1:5101 --profile burst --n 64 --corpus ./corpora/uttera-tts-40w --output ./results/run7-tts-hotcold-voxcpm/voxcpm-burst64.json",
+  "raw_csv_path": "voxcpm-burst64.csv",
+  "metrics": {
+    "wall_s": 202.91005420684814,
+    "ok": 63,
+    "fail": 1,
+    "rps": 0.3104823969726867,
+    "rtf_agg": 0.0,
+    "latency_ms": {
+      "min": 2385.0200176239014,
+      "p50": 98636.71731948853,
+      "p90": 177145.61009407043,
+      "p95": 183524.4677066803,
+      "p99": 192622.88641929626,
+      "max": 192622.88641929626,
+      "avg": 98116.88667630393
+    },
+    "routes": {
+      "HOT": 20,
+      "COLD-POOL": 43
+    }
+  }
+}
