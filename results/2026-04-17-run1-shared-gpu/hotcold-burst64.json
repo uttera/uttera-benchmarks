@@ -1,0 +1,60 @@
+{
+  "schema_version": "1.0.0",
+  "run_id": "fe02ec04-03b8-4bb3-90b7-47d88ff27db5",
+  "run_started_at": "2026-04-16T23:50:28.901594+00:00",
+  "run_finished_at": "2026-04-16T23:50:36.941860+00:00",
+  "node": {
+    "host": "openclaw",
+    "os": "Linux 6.17.0-20-generic",
+    "gpu": "NVIDIA GeForce RTX 5090",
+    "vram_total_gb": 31.8427734375,
+    "vram_free_gb_at_start": 25.2578125,
+    "driver": "590.48.01",
+    "cuda": "13.1",
+    "shared_gpu": false,
+    "cold_start": false
+  },
+  "service": {
+    "repo": "unknown",
+    "commit": "0000000",
+    "protocol_doc": "uttera/uttera-infra:benchmarks/PROTOCOL.md",
+    "model": "turbo",
+    "engine": "unknown",
+    "config": {}
+  },
+  "corpus": {
+    "id": "librispeech-test-clean",
+    "n_clips": 2620,
+    "total_audio_seconds": 19452.480625,
+    "sha256_manifest": "18dbc9a7e507b5ea64f468dae9742e18ccdb722da18b81618db418041c98ca36",
+    "clip_duration_mean": 7.4246109255725194,
+    "clip_duration_min": 1.285,
+    "clip_duration_max": 34.955
+  },
+  "profile": {
+    "kind": "burst",
+    "n": 64,
+    "warmup": 3
+  },
+  "command": "./bench.py --mode stt --server http://sphinx:5000 --profile burst --n 64 --corpus ./corpora/librispeech-test-clean --output results/hotcold-burst64.json",
+  "raw_csv_path": "hotcold-burst64.csv",
+  "metrics": {
+    "wall_s": 8.040252447128296,
+    "ok": 64,
+    "fail": 0,
+    "rps": 7.959949071357656,
+    "rtf_agg": 60.08021864693223,
+    "latency_ms": {
+      "min": 149.92117881774902,
+      "p50": 3966.320276260376,
+      "p90": 6740.134716033936,
+      "p95": 7129.036426544189,
+      "p99": 7605.774879455566,
+      "max": 7605.774879455566,
+      "avg": 3825.509775429964
+    },
+    "routes": {
+      "HOT": 64
+    }
+  }
+}
