@@ -37,7 +37,7 @@ jobs:
           import json
           with open('schemas/bench-result.schema.json') as f:
               s = json.load(f)
-          assert s.get('$schema', '').startswith('https://json-schema.org/'), 'Not a JSON Schema document'
+          assert s.get('\$schema', '').startswith('https://json-schema.org/'), 'Not a JSON Schema document'
           assert s['type'] == 'object', 'Schema root is not an object'
           for req in ('schema_version', 'run_id', 'node', 'service', 'corpus', 'profile', 'command', 'metrics'):
               assert req in s['required'], f'Schema missing required field: {req}'
