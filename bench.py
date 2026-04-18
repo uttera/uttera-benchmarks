@@ -19,7 +19,7 @@
 #              --output results/stt-vllm-burst-64.json
 #
 #   # TTS latency against the hotcold prod
-#   ./bench.py --mode tts --server http://tts-node:5000 \
+#   ./bench.py --mode tts --server http://sphinx:5100 \
 #              --profile latency \
 #              --corpus ./corpora/uttera-tts-40w \
 #              --output results/tts-hotcold-latency.json
@@ -47,12 +47,13 @@ import hashlib
 import json
 import os
 import platform
+import random
 import statistics
 import subprocess
 import sys
 import time
 import uuid
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -129,14 +130,14 @@ def _corpus_sha256(clips: list[Clip]) -> str:
 # Transport
 # ---------------------------------------------------------------------------
 
-async def _one_stt(client: httpx.AsyncClient, server: str, clip: Clip, model: str) -> dict:
+async def _one_stt(client: httpx.AsyncClient, server: str, clip: Clip, model: str, *, client_timeout: float = 600) -> dict:
     t0 = time.time()
     try:
         r = await client.post(
             f"{server}/v1/audio/transcriptions",
             files={"file": (clip.id, clip.payload, "application/octet-stream")},
             data={"model": model},
-            timeout=600,
+            timeout=client_timeout,
         )
         elapsed = time.time() - t0
         return {
@@ -155,13 +156,13 @@ async def _one_stt(client: httpx.AsyncClient, server: str, clip: Clip, model: st
         }
 
 
-async def _one_tts(client: httpx.AsyncClient, server: str, clip: Clip, model: str) -> dict:
+async def _one_tts(client: httpx.AsyncClient, server: str, clip: Clip, model: str, *, client_timeout: float = 600) -> dict:
     body = {"model": model, "voice": "alloy",
             "input": clip.payload.decode("utf-8"),
             "response_format": "wav"}
     t0 = time.time()
     try:
-        r = await client.post(f"{server}/v1/audio/speech", json=body, timeout=600)
+        r = await client.post(f"{server}/v1/audio/speech", json=body, timeout=client_timeout)
         elapsed = time.time() - t0
         return {
             "clip_id": clip.id,
@@ -187,38 +188,39 @@ async def _one_tts(client: httpx.AsyncClient, server: str, clip: Clip, model: st
 # ---------------------------------------------------------------------------
 
 async def run_latency(mode: str, server: str, clips: list[Clip], model: str,
-                      warmup: int, iterations: int) -> list[dict]:
+                      warmup: int, iterations: int, client_timeout: float = 600) -> list[dict]:
     one = _one_stt if mode == "stt" else _one_tts
     async with httpx.AsyncClient() as client:
         # warmup
         for i in range(warmup):
-            await one(client, server, clips[i % len(clips)], model)
+            await one(client, server, clips[i % len(clips)], model, client_timeout=client_timeout)
         results: list[dict] = []
         for i in range(iterations):
-            res = await one(client, server, clips[i % len(clips)], model)
+            res = await one(client, server, clips[i % len(clips)], model, client_timeout=client_timeout)
             results.append(res)
     return results
 
 
 async def run_burst(mode: str, server: str, clips: list[Clip], model: str,
-                    warmup: int, n: int) -> list[dict]:
+                    warmup: int, n: int, client_timeout: float = 600) -> list[dict]:
     one = _one_stt if mode == "stt" else _one_tts
     limits = httpx.Limits(max_connections=n + 16, max_keepalive_connections=n + 16)
     async with httpx.AsyncClient(limits=limits) as client:
         for i in range(warmup):
-            await one(client, server, clips[i % len(clips)], model)
-        tasks = [one(client, server, clips[i % len(clips)], model) for i in range(n)]
+            await one(client, server, clips[i % len(clips)], model, client_timeout=client_timeout)
+        tasks = [one(client, server, clips[i % len(clips)], model, client_timeout=client_timeout) for i in range(n)]
         return await asyncio.gather(*tasks)
 
 
 async def run_sustained(mode: str, server: str, clips: list[Clip], model: str,
-                        warmup: int, rps: float, duration_s: int) -> tuple[list[dict], list[float]]:
+                        warmup: int, rps: float, duration_s: int,
+                        client_timeout: float = 600) -> tuple[list[dict], list[float]]:
     """Fire at a constant arrival rate for duration_s. Returns (results, p95_per_minute)."""
     one = _one_stt if mode == "stt" else _one_tts
     limits = httpx.Limits(max_connections=1024, max_keepalive_connections=1024)
     async with httpx.AsyncClient(limits=limits) as client:
         for i in range(warmup):
-            await one(client, server, clips[i % len(clips)], model)
+            await one(client, server, clips[i % len(clips)], model, client_timeout=client_timeout)
 
         results: list[dict] = []
         tasks: set[asyncio.Task] = set()
@@ -229,7 +231,7 @@ async def run_sustained(mode: str, server: str, clips: list[Clip], model: str,
         i = 0
 
         async def dispatch(clip: Clip):
-            res = await one(client, server, clip, model)
+            res = await one(client, server, clip, model, client_timeout=client_timeout)
             results.append(res)
             bucket = min(int((time.time() - t0) // 60), len(minute_buckets) - 1)
             minute_buckets[bucket].append(res["latency_ms"])
@@ -349,6 +351,10 @@ def main():
     ap.add_argument("--notes", default=None, help="Free-form note; copied into the JSON.")
     ap.add_argument("--shared-gpu", action="store_true", help="Set node.shared_gpu=true in metadata.")
     ap.add_argument("--cold-start", action="store_true", help="Set node.cold_start=true in metadata.")
+    ap.add_argument("--client-timeout", type=float, default=600.0,
+                    help="Per-request httpx timeout in seconds (default 600). Raise this when the server's p95 under "
+                         "heavy burst exceeds 10 min; large-N TTS on hot/cold pools can legitimately drain for 20–40 min "
+                         "per request without being a server failure.")
     args = ap.parse_args()
 
     corpus_dir = args.corpus.resolve()
@@ -369,16 +375,19 @@ def main():
     t_wall_0 = time.time()
     if args.profile == "latency":
         results = asyncio.run(run_latency(args.mode, args.server, clips, args.model,
-                                          args.warmup, args.iterations))
+                                          args.warmup, args.iterations,
+                                          client_timeout=args.client_timeout))
         profile_obj = {"kind": "latency", "iterations": args.iterations, "warmup": args.warmup}
     elif args.profile == "burst":
         results = asyncio.run(run_burst(args.mode, args.server, clips, args.model,
-                                        args.warmup, args.n))
+                                        args.warmup, args.n,
+                                        client_timeout=args.client_timeout))
         profile_obj = {"kind": "burst", "n": args.n, "warmup": args.warmup}
     else:
         results, sustained_drift = asyncio.run(
             run_sustained(args.mode, args.server, clips, args.model,
-                          args.warmup, args.rps, args.duration))
+                          args.warmup, args.rps, args.duration,
+                          client_timeout=args.client_timeout))
         profile_obj = {"kind": "sustained", "rps": args.rps, "duration_s": args.duration, "warmup": args.warmup}
     wall_s = time.time() - t_wall_0
     finished_at = datetime.now(timezone.utc).isoformat()
