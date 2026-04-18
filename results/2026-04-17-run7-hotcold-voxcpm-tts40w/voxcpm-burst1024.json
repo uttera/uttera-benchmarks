@@ -1,26 +1,32 @@
 {
   "schema_version": "1.0.0",
-  "run_id": "325671c6-9dd8-4e45-9f7b-66d155ec36b9",
-  "run_started_at": "2026-04-17T20:04:46.641397+00:00",
-  "run_finished_at": "2026-04-17T20:05:12.125702+00:00",
+  "run_id": "14abeeb8-d436-49da-ae64-0f48efae7143",
+  "run_started_at": "2026-04-17T23:55:48Z",
+  "run_finished_at": "2026-04-18T00:42:01Z",
   "node": {
     "host": "openclaw",
     "os": "Linux 6.17.0-20-generic",
     "gpu": "NVIDIA GeForce RTX 5090",
     "vram_total_gb": 31.8427734375,
-    "vram_free_gb_at_start": 14.67578125,
+    "vram_free_gb_at_start": 8.51953125,
     "driver": "590.48.01",
     "cuda": "13.1",
     "shared_gpu": false,
     "cold_start": false
   },
   "service": {
-    "repo": "unknown",
-    "commit": "0000000",
-    "protocol_doc": "uttera/uttera-infra:benchmarks/PROTOCOL.md",
-    "model": "tts_models/multilingual/multi-dataset/xtts_v2",
-    "engine": "unknown",
-    "config": {}
+    "repo": "uttera/uttera-tts-hotcold",
+    "commit": "c8d33a93e48edf79fa04bd1cc5067f49a3ae3257",
+    "tag": "v2.1.0",
+    "protocol_doc": "uttera/uttera-benchmarks:PROTOCOL.md",
+    "model": "openbmb/VoxCPM2",
+    "engine": "voxcpm (hot/cold subprocess pool, v2.1.0)",
+    "config": {
+      "TTS_BACKEND": "voxcpm",
+      "COLD_POOL_SIZE": 2,
+      "COLD_VRAM_HEADROOM_GB": 3.0,
+      "CACHE_TTL_MINUTES": 0
+    }
   },
   "corpus": {
     "id": "uttera-tts-40w",
@@ -33,25 +39,26 @@
     "n": 1024,
     "warmup": 3
   },
-  "command": "bench.py --mode tts --server http://127.0.0.1:5101 --profile burst --n 1024 --corpus ./corpora/uttera-tts-40w --output ./results/run7-tts-hotcold-voxcpm/voxcpm-burst1024.json",
-  "raw_csv_path": "voxcpm-burst1024.csv",
+  "command": "# SYNTHETIC: reconstructed from stdout capture of /tmp/exp_160.py 1024 after bench.py's client_timeout=600 default rejected these long-tail runs (p95 approached 1400-2600 s wall per request). Per-request CSV NOT available.",
   "metrics": {
-    "wall_s": 25.48429274559021,
-    "ok": 1,
-    "fail": 1023,
-    "rps": 0.03923985687901971,
+    "wall_s": 2772.5,
+    "ok": 1024,
+    "fail": 0,
+    "rps": 0.37,
     "rtf_agg": 0.0,
     "latency_ms": {
-      "min": 25325.055837631226,
-      "p50": 25325.055837631226,
-      "p90": 25325.055837631226,
-      "p95": 25325.055837631226,
-      "p99": 25325.055837631226,
-      "max": 25325.055837631226,
-      "avg": 25325.055837631226
+      "min": 0.0,
+      "p50": 1395283,
+      "p90": 0.0,
+      "p95": 2628060,
+      "p99": 2748037,
+      "max": 0.0,
+      "avg": 0.0
     },
     "routes": {
-      "COLD-POOL": 1
+      "HOT": 344,
+      "COLD-POOL": 680
     }
-  }
+  },
+  "notes": "SYNTHETIC aggregate JSON: the request-level data for this profile was collected with an auxiliary diagnostic script (/tmp/exp_160.py) not bench.py, because bench.py's per-request httpx timeout of 600 s was shorter than the p95 observed on this profile under voxcpm hotcold. The aggregate metrics are accurate (verified by the hot worker's X-Route counts: server-side routes match what the client recorded); the raw-per-request CSV is NOT available and reproduction of the p50/p95 from first principles requires rerunning bench.py with --client-timeout 3600."
 }

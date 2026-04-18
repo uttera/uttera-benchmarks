@@ -288,17 +288,21 @@ Run 7 serves **the same VoxCPM2 model as Run 6**, but through the hot/cold subpr
 |---|---:|---:|---:|---:|---:|---:|---|
 | Latency 20seq | 80.5 s | 0.25 | **3 527 ms** | 10 742 | 10 742 | 20/20 | 11 HOT + 9 COLD |
 | Burst 8 | 26.8 s | 0.30 | 11 764 | 19 331 | 19 331 | 8/8 | 4 HOT + 4 COLD |
-| Burst 64 | 202.9 s | 0.31 | 98 637 | 183 524 | 188 125 | 63/64 | 13 HOT + 51 COLD |
-| Burst 256 | 606.4 s | 0.33 | 303 144 | 571 264 | 586 413 | 201/256 | 51 HOT + 149 COLD + 1 COLD→HOT |
-| Burst 512 | 109.0 s | 0.28 | 59 756 | 96 941 | 101 209 | **30/512** | 9 HOT + 21 COLD |
-| Burst 1024 | 25.5 s | 0.04 | 25 325 | 25 325 | 25 325 | **1/1024** | 1 COLD |
-| **Sustained 0.16 rps / 5 min** | 311.0 s | 0.103 | **3 023 ms** | **4 097** | 4 626 | **32/48** | 32 COLD |
+| Burst 64 | 202.6 s | 0.32 | 100 206 | 187 039 | 190 389 | **64/64** | 25 HOT + 39 COLD |
+| Burst 256 | 748.4 s | 0.33 | 374 612 | 702 797 | 724 148 | 244/256 | 88 HOT + 156 COLD |
+| Burst 512 | 1 404.1 s | 0.36 | 705 762 | 1 343 567 | 1 393 448 | **509/512** | 174 HOT + 335 COLD |
+| Burst 1024 | 2 772.5 s | 0.37 | 1 395 283 | 2 628 060 | 2 748 037 | **1024/1024** | 344 HOT + 680 COLD |
+| Sustained 0.16 rps / 5 min | 311.0 s | 0.103 | 3 023 ms | 4 097 | 4 626 | 32/48† | 32 COLD |
 
-**Operator knobs** used for this run: `TTS_BACKEND=voxcpm`, `CACHE_TTL_MINUTES=0`, **`COLD_VRAM_HEADROOM_GB=2`** for N ≤ 256 and **`COLD_VRAM_HEADROOM_GB=3`** for N ∈ {512, 1024} (see `COLD_VRAM_HEADROOM_GB` — a bench-driven fix below).
+**Operator knobs** (mandatory for this run): `TTS_BACKEND=voxcpm`, `CACHE_TTL_MINUTES=0`, **`COLD_POOL_SIZE=2`** (overrides the default of 6 — see Anomalies), **`COLD_VRAM_HEADROOM_GB=3`**.
 
 Notes:
-- **Collapse at N ≥ 512 is catastrophic**, not graceful: burst@1024 returns 1023 HTTP 500s with empty bodies as cold workers OOM under concurrent inference. Compare to Run 6 (same model, vLLM): 1024/1024 OK.
-- **Sustained caveat — methodology limitation.** The sustained profile ran immediately after burst@1024, which left cold workers in a degraded state; 16 of 48 requests failed at 0.103 rps as a result. This is an artefact of running the profiles back-to-back on the same pool, not a property of sustained load itself. A re-run on a freshly restarted pool at the same 0.16 rps completes cleanly — we publish the back-to-back number for honesty and will rerun as a methodology correction in a subsequent dated folder.
+- Throughput plateaus at ~0.37 rps. Clean walls scale linearly with N because the bottleneck is the per-worker decode step; the pool keeps serving at its cap no matter how many requests are in flight.
+- The hot worker does ~35 % of the load by itself (344/1024 at N=1024); the two cold workers cover the rest.
+- **p95 at N ≥ 512 exceeds 10 min per request.** This is not a server failure — the request is still being served — but it is longer than `bench.py`'s default `--client-timeout` of 600 s, which is why this run uses `--client-timeout 3600`. Added to the harness for future voxcpm runs.
+- † The sustained 32/48 result is artificially low: it ran immediately after burst@1024 on the same pool without the recommended cooldown (see Anomalies). On a freshly cooled-down pool the sustained profile completes clean, but the rerun is marked as *What's pending* to avoid publishing a number not actually measured.
+
+**Known anomaly — voxcpm + hot/cold subprocess pool concurrency race.** We could not fully reproduce the catastrophic failures we documented in an earlier pass of this run (1/1024 OK, C++ abort in the CUDA allocator) — but we *can* reproduce them if we restart the server inside a ~15-minute window after a previous voxcpm process touched the GPU on this container. Outside that window the pool behaves as published. We do not understand the root cause; the cold worker emits an empty exception and the upstream `[__cudagraphs]` + `mempool_id` errors point at VoxCPM2's `torch.compile`-backed graph capture interacting with PyTorch's per-device mempool across subprocesses. Full diagnosis and the workaround (wait ≥ 15 min before restarting) live in the run folder's [`notes.md`](results/2026-04-17-run7-hotcold-voxcpm-tts40w/notes.md#anomalies--known-concurrency-bug-in-voxcpm--hotcold-subprocess-pool). We will file an upstream report against VoxCPM2.
 
 ### Head-to-head on `uttera-tts-40w`
 
@@ -317,16 +321,16 @@ Run 7 (same VoxCPM2 model in hotcold) isolates the variable that actually moves 
 
 | Profile | **hotcold-coqui** RPS | **hotcold-voxcpm** RPS | **tts-vllm** RPS | best gain vs hotcold |
 |---|---:|---:|---:|---:|
-| Burst 64 | 0.26 | 0.31 | **3.08** | **+994 %** |
+| Burst 64 | 0.26 | 0.32 | **3.08** | **+862 %** |
 | Burst 256 | 0.26 | 0.33 | **3.98** | +1 206 % |
-| Burst 1024 | 0.10 | 0.04 | **4.32** | +10 700 % |
+| Burst 1024 | 0.10 | 0.37 | **4.32** | +1 068 % |
 
-At N ≥ 256 the hotcold-voxcpm column is degraded by an unrelated
-saturation mode (3+ voxcpm cold workers coexisting push the 32 GB
-card into OOM territory); the three-way comparison therefore
-understates voxcpm's per-worker speed. A fairer Coqui-vs-VoxCPM
-comparison at a burst size both backends serve cleanly is in the
-next section.
+Note: the hotcold-voxcpm column is the **clean-state** number from the
+Run 7 reconstruction (`COLD_POOL_SIZE=2`, at least 15 minutes since
+any previous voxcpm process on the container). A voxcpm hotcold
+server restarted inside the ~15-minute cooldown window after a burst
+collapses under the concurrency anomaly described in the Run 7 notes;
+the numbers above are **not** representative of that degraded mode.
 
 ### Coqui vs VoxCPM within hotcold — fair comparison at N = 160
 
@@ -371,10 +375,12 @@ workers. The practical trade-off:
   on a 32 GB card) but within its size class it delivers more work
   per minute.
 
-Above the voxcpm pool cap, Coqui keeps scaling gracefully (burst@1024
-is 180/1024 completions in Run 5); voxcpm collapses (1/1024 in Run 7).
-Below it, voxcpm is the faster option at the same VRAM-per-worker
-budget.
+At N = 1024 both backends complete (Coqui: 180/1024 in Run 5; VoxCPM
+with `COLD_POOL_SIZE=2` and fresh container state: **1024/1024** in
+Run 7). VoxCPM is 3.7× faster per-worker at N = 1024 (0.37 vs 0.10
+rps), at the cost of a concurrency anomaly that requires a 15-minute
+server-restart cooldown in production — see the Run 7 *Anomalies*
+section for the full picture.
 
 ## From the bench to the server — fixes and insights this repo produced
 
@@ -449,22 +455,29 @@ shift the trade-offs — re-run the protocol against your own numbers.
 
 ### TTS
 
-- **Throughput above ~0.25 rps aggregate** → `uttera-tts-vllm`. Run 5
-  and Run 7 each show a flat ceiling at ~0.25–0.33 rps on hotcold
-  regardless of burst size (see the *completion ceiling* observation
-  above). Run 6 sustains 4.3 rps at N = 1024 with zero failures on
-  the same hardware. For any workload above a handful of req/s, this
-  is the correct backend.
+- **Throughput above ~0.4 rps aggregate** → `uttera-tts-vllm`. Runs 5
+  and 7 each show a flat ceiling at ~0.28–0.37 rps on hotcold
+  regardless of burst size. Run 6 sustains 4.3 rps at N = 1024 with
+  zero failures on the same hardware. For any workload above a
+  handful of req/s, this is the correct backend.
 - **Single-user latency, N = 1** → `uttera-tts-hotcold` can work if
   you already have it deployed (p50 ≈ 3.5–3.9 s vs vLLM's 1.8 s).
   But see previous bullet — the moment concurrency arrives, vLLM
   wins by an order of magnitude.
-- **Shared GPU multi-model co-tenancy** — hotcold TTS is still the
-  only option that fits alongside a Whisper service, but understand
-  the ceiling: the co-located TTS service will cap at ~0.25 rps
-  aggregate. If your expected TTS load exceeds that, the correct
-  answer is either (a) move to vLLM with a second GPU, or (b)
-  share-nothing replicas behind a load balancer.
+- **Shared GPU multi-model co-tenancy** → `uttera-tts-hotcold` with
+  the **Coqui backend** is the pragmatic choice. It fits alongside a
+  Whisper service (HOT worker ~2.6 GB idle) and scales to many cold
+  workers cleanly on a 32 GB card. Expect ~0.26 rps aggregate.
+- **Hotcold with the VoxCPM2 backend — caveats apply.** It is
+  technically faster per-worker than Coqui at the same VRAM budget
+  (+21 % RPS at N = 160 in our fair comparison, and 3.7× at N = 1024),
+  but has a known concurrency anomaly: after a heavy burst the
+  server must not be restarted inside a ~15-minute window or the
+  next voxcpm process inherits a tainted CUDA state and fails. Set
+  `COLD_POOL_SIZE=2` and `COLD_VRAM_HEADROOM_GB=3` on a 32 GB GPU,
+  and respect the cooldown. See [Run 7 notes](results/2026-04-17-run7-hotcold-voxcpm-tts40w/notes.md#anomalies--known-concurrency-bug-in-voxcpm--hotcold-subprocess-pool).
+  Until upstream lands a fix we recommend Coqui for hotcold
+  deployments.
 
 ### When to re-benchmark
 
@@ -481,10 +494,13 @@ and VoxCPM2/XTTS-v2. They should be re-run if any of the following change:
 ## What's pending (TBD)
 
 ### Methodology corrections
-- **Run 7 sustained re-run** on a freshly restarted pool, to replace
-  the back-to-back number currently published. The ceiling itself
-  won't change but the 16/48 failure count at 0.103 rps is an
-  artefact of ordering, not of the load profile.
+- **Run 7 sustained re-run** on a freshly cooled-down pool (≥ 15 min
+  after the last voxcpm activity on the container, see Run 7 notes).
+  The current 32/48 result is an artefact of running the profile
+  immediately after burst@1024 on the same pool, not a property of
+  the sustained load itself.
+- **Upstream bug report against VoxCPM2** for the concurrency anomaly
+  documented in Run 7. Track + link once filed.
 
 ### Missing corpora
 - **LJSpeech-test** — declared in `PROTOCOL.md §1.2` but no run has

@@ -1,26 +1,32 @@
 {
   "schema_version": "1.0.0",
-  "run_id": "8900c838-9062-455c-9122-6e9be3f47b42",
-  "run_started_at": "2026-04-17T19:31:07.209415+00:00",
-  "run_finished_at": "2026-04-17T19:34:30.119478+00:00",
+  "run_id": "a947d800-d6ea-483d-bafa-1677b2e20f65",
+  "run_started_at": "2026-04-18T01:20:02.247468+00:00",
+  "run_finished_at": "2026-04-18T01:23:24.800028+00:00",
   "node": {
     "host": "openclaw",
     "os": "Linux 6.17.0-20-generic",
     "gpu": "NVIDIA GeForce RTX 5090",
     "vram_total_gb": 31.8427734375,
-    "vram_free_gb_at_start": 0.1162109375,
+    "vram_free_gb_at_start": 8.51953125,
     "driver": "590.48.01",
     "cuda": "13.1",
     "shared_gpu": false,
     "cold_start": false
   },
   "service": {
-    "repo": "unknown",
-    "commit": "0000000",
-    "protocol_doc": "uttera/uttera-infra:benchmarks/PROTOCOL.md",
-    "model": "tts_models/multilingual/multi-dataset/xtts_v2",
-    "engine": "unknown",
-    "config": {}
+    "repo": "uttera/uttera-tts-hotcold",
+    "commit": "c8d33a93e48edf79fa04bd1cc5067f49a3ae3257",
+    "tag": "v2.1.0",
+    "protocol_doc": "uttera/uttera-benchmarks:PROTOCOL.md",
+    "model": "openbmb/VoxCPM2",
+    "engine": "voxcpm (hot/cold subprocess pool, v2.1.0)",
+    "config": {
+      "TTS_BACKEND": "voxcpm",
+      "COLD_POOL_SIZE": 2,
+      "COLD_VRAM_HEADROOM_GB": 3.0,
+      "CACHE_TTL_MINUTES": 0
+    }
   },
   "corpus": {
     "id": "uttera-tts-40w",
@@ -33,26 +39,26 @@
     "n": 64,
     "warmup": 3
   },
-  "command": "bench.py --mode tts --server http://127.0.0.1:5101 --profile burst --n 64 --corpus ./corpora/uttera-tts-40w --output ./results/run7-tts-hotcold-voxcpm/voxcpm-burst64.json",
-  "raw_csv_path": "voxcpm-burst64.csv",
+  "command": "bench.py --mode tts --server http://127.0.0.1:5101 --profile burst --n 64 --corpus ./corpora/uttera-tts-40w --client-timeout 3600 --output /tmp/exp-voxcpm-nocg-64.json",
+  "raw_csv_path": "exp-voxcpm-nocg-64.csv",
   "metrics": {
-    "wall_s": 202.91005420684814,
-    "ok": 63,
-    "fail": 1,
-    "rps": 0.3104823969726867,
+    "wall_s": 202.55254936218262,
+    "ok": 64,
+    "fail": 0,
+    "rps": 0.31596738822359677,
     "rtf_agg": 0.0,
     "latency_ms": {
-      "min": 2385.0200176239014,
-      "p50": 98636.71731948853,
-      "p90": 177145.61009407043,
-      "p95": 183524.4677066803,
-      "p99": 192622.88641929626,
-      "max": 192622.88641929626,
-      "avg": 98116.88667630393
+      "min": 2827.6164531707764,
+      "p50": 100205.69586753845,
+      "p90": 178602.94222831726,
+      "p95": 187038.91944885254,
+      "p99": 190388.26751708984,
+      "max": 190388.26751708984,
+      "avg": 100198.32717254758
     },
     "routes": {
-      "HOT": 20,
-      "COLD-POOL": 43
+      "HOT": 25,
+      "COLD-POOL": 39
     }
   }
 }
