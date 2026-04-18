@@ -96,7 +96,7 @@ The failure signature points consistently at **CUDA graph capture interacting wi
 
 ### Root cause
 
-**Not known.** The failure is reproducible but our instrumentation ends at the `{"error": ""}` that the cold worker writes to stdout after its `except Exception` clause: the underlying torch exception's `str(e)` is empty. Properly diagnosing this needs access to VoxCPM2 internals (specifically the call sites of `torch.compile` / `CUDAGraph` capture), which we will file as a detailed upstream report.
+**Not known.** The failure is reproducible but our instrumentation ends at the `{"error": ""}` that the cold worker writes to stdout after its `except Exception` clause: the underlying torch exception's `str(e)` is empty. Properly diagnosing this needs access to VoxCPM2 internals (specifically the call sites of `torch.compile` / `CUDAGraph` capture), filed upstream as [OpenBMB/VoxCPM#269](https://github.com/OpenBMB/VoxCPM/issues/269).
 
 ### Workaround (the one we ship)
 

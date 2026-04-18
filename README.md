@@ -499,8 +499,9 @@ and VoxCPM2/XTTS-v2. They should be re-run if any of the following change:
   The current 32/48 result is an artefact of running the profile
   immediately after burst@1024 on the same pool, not a property of
   the sustained load itself.
-- **Upstream bug report against VoxCPM2** for the concurrency anomaly
-  documented in Run 7. Track + link once filed.
+- **Upstream bug report against VoxCPM2** — filed as
+  [OpenBMB/VoxCPM#269](https://github.com/OpenBMB/VoxCPM/issues/269).
+  Tracks the CUDA-allocator / cudagraph race documented in Run 7.
 
 ### Missing corpora
 - **LJSpeech-test** — declared in `PROTOCOL.md §1.2` but no run has
