@@ -26,7 +26,7 @@ would invalidate cross-run comparison.
 | **librispeech-test-clean** | [OpenSLR 12](https://www.openslr.org/12) | ~2620 English utterances, 5.4 h total, 4–20 s per clip | Industry-standard reference (NVIDIA Riva, Deepgram, AssemblyAI publish against this) |
 | **commonvoice-es-test** | [Mozilla CommonVoice v17 Spanish](https://commonvoice.mozilla.org/en/datasets) test split | ~15 k utterances Spanish, 2–8 s per clip | Spanish-speaking customer realism |
 | **fleurs-multilingual** | [Google FLEURS](https://huggingface.co/datasets/google/fleurs) `test` | 102 languages, ~600 clips per language | Multilingual coverage / regression smoke |
-| **uttera-stt-internal** | _private_ | ~50 production-style clips from real user traffic | Internal-only, never published externally |
+| **uttera-stt-internal** | [`corpora/uttera-stt-internal/`](corpora/uttera-stt-internal/) | 160 Spanish WAVs (4 voices × 40 prompts), TTS-synthesised from `uttera-tts-40w` with XTTS-v2 | Spanish STT reference, bit-for-bit reproducible across runs — see corpus README for provenance and XTTS-v2 licence caveat |
 
 ### 1.2 TTS corpora
 
