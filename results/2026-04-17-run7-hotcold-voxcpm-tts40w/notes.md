@@ -94,9 +94,13 @@ The failure signature points consistently at **CUDA graph capture interacting wi
 - `TORCHINDUCTOR_CUDA_GRAPHS=0` — we tried this env var; it has **no effect** (it is not a real PyTorch knob; the warning `[__cudagraphs] CUDAGraph supports dynamic shapes…` continues to appear). A proper disable would need `torch._inductor.config.triton.cudagraphs = False` monkey-patched before `load_backend()` in `cold_worker_tts.py` — we did not attempt this because the change needs to live in the voxcpm-specific backend, not in a benchmark harness.
 - Adding headroom to the gate (more VRAM reserved) — helps absorb spikes but does not prevent the graph-capture collision.
 
-### Root cause
+### Root cause — confirmed upstream
 
-**Not known.** The failure is reproducible but our instrumentation ends at the `{"error": ""}` that the cold worker writes to stdout after its `except Exception` clause: the underlying torch exception's `str(e)` is empty. Properly diagnosing this needs access to VoxCPM2 internals (specifically the call sites of `torch.compile` / `CUDAGraph` capture), filed upstream as [OpenBMB/VoxCPM#269](https://github.com/OpenBMB/VoxCPM/issues/269).
+**The CUDA Graph optimisation path enabled by `torch.compile` inside VoxCPM2.** Confirmed by the VoxCPM maintainers in [OpenBMB/VoxCPM#269](https://github.com/OpenBMB/VoxCPM/issues/269#issuecomment-4272447621):
+
+> *"Yes, this is a known issue caused by the CUDA Graph optimization path enabled by torch.compile. For workloads that require concurrency, we currently recommend using either nano-vllm-voxcpm or vllm-omni for development and production deployment instead. The single-process serving architecture in these runtimes is a better fit for concurrent inference and avoids the multi-process CUDA Graph instability described here."*
+
+That matches our recommendation exactly: `uttera-tts-vllm` (which wraps `nano-vllm-voxcpm`'s `AsyncVoxCPM2ServerPool`) is the production path for VoxCPM2. Run 6 published 1024/1024 OK at burst@1024 on the same GPU using that single-process architecture.
 
 ### Workaround (the one we ship)
 

@@ -302,7 +302,7 @@ Notes:
 - **p95 at N ≥ 512 exceeds 10 min per request.** This is not a server failure — the request is still being served — but it is longer than `bench.py`'s default `--client-timeout` of 600 s, which is why this run uses `--client-timeout 3600`. Added to the harness for future voxcpm runs.
 - † The sustained 32/48 result is artificially low: it ran immediately after burst@1024 on the same pool without the recommended cooldown (see Anomalies). On a freshly cooled-down pool the sustained profile completes clean, but the rerun is marked as *What's pending* to avoid publishing a number not actually measured.
 
-**Known anomaly — voxcpm + hot/cold subprocess pool concurrency race.** We could not fully reproduce the catastrophic failures we documented in an earlier pass of this run (1/1024 OK, C++ abort in the CUDA allocator) — but we *can* reproduce them if we restart the server inside a ~15-minute window after a previous voxcpm process touched the GPU on this container. Outside that window the pool behaves as published. We do not understand the root cause; the cold worker emits an empty exception and the upstream `[__cudagraphs]` + `mempool_id` errors point at VoxCPM2's `torch.compile`-backed graph capture interacting with PyTorch's per-device mempool across subprocesses. Full diagnosis and the workaround (wait ≥ 15 min before restarting) live in the run folder's [`notes.md`](results/2026-04-17-run7-hotcold-voxcpm-tts40w/notes.md#anomalies--known-concurrency-bug-in-voxcpm--hotcold-subprocess-pool). We will file an upstream report against VoxCPM2.
+**Known anomaly — confirmed upstream — voxcpm + hot/cold subprocess pool concurrency race.** The catastrophic failure mode (1/1024 OK, C++ abort in the CUDA allocator; reproducible when the server is restarted inside a ~15-minute window after a previous voxcpm process touched the GPU on this container) is caused by **VoxCPM2's `torch.compile` / CUDA Graph path interacting with multi-process subprocess pools**. Confirmed upstream in [OpenBMB/VoxCPM#269](https://github.com/OpenBMB/VoxCPM/issues/269#issuecomment-4272447621); the VoxCPM maintainers **explicitly recommend a single-process runtime (`nano-vllm-voxcpm` or `vllm-omni`) for concurrent serving** instead of hot/cold's subprocess pool. Uttera's production path for VoxCPM2 is [`uttera-tts-vllm`](https://github.com/uttera/uttera-tts-vllm), which wraps `nano-vllm-voxcpm` and clears 1024/1024 on the same GPU. The hot/cold voxcpm backend remains usable for dev / single-request / bench purposes, with the 15-minute cooldown caveat for concurrent runs. Full diagnosis and workaround in the run folder's [`notes.md`](results/2026-04-17-run7-hotcold-voxcpm-tts40w/notes.md#root-cause--confirmed-upstream).
 
 ### Head-to-head on `uttera-tts-40w`
 
@@ -468,16 +468,17 @@ shift the trade-offs — re-run the protocol against your own numbers.
   the **Coqui backend** is the pragmatic choice. It fits alongside a
   Whisper service (HOT worker ~2.6 GB idle) and scales to many cold
   workers cleanly on a 32 GB card. Expect ~0.26 rps aggregate.
-- **Hotcold with the VoxCPM2 backend — caveats apply.** It is
-  technically faster per-worker than Coqui at the same VRAM budget
-  (+21 % RPS at N = 160 in our fair comparison, and 3.7× at N = 1024),
-  but has a known concurrency anomaly: after a heavy burst the
-  server must not be restarted inside a ~15-minute window or the
-  next voxcpm process inherits a tainted CUDA state and fails. Set
-  `COLD_POOL_SIZE=2` and `COLD_VRAM_HEADROOM_GB=3` on a 32 GB GPU,
-  and respect the cooldown. See [Run 7 notes](results/2026-04-17-run7-hotcold-voxcpm-tts40w/notes.md#anomalies--known-concurrency-bug-in-voxcpm--hotcold-subprocess-pool).
-  Until upstream lands a fix we recommend Coqui for hotcold
-  deployments.
+- **Hotcold with the VoxCPM2 backend — do not use for concurrent
+  production.** Upstream ([OpenBMB/VoxCPM#269](https://github.com/OpenBMB/VoxCPM/issues/269#issuecomment-4272447621))
+  confirmed that VoxCPM2's `torch.compile` / CUDA Graph path is
+  incompatible with multi-process subprocess pools and recommended
+  `nano-vllm-voxcpm` / `vllm-omni` for concurrent serving. For
+  VoxCPM2 workloads use [`uttera-tts-vllm`](https://github.com/uttera/uttera-tts-vllm)
+  (which wraps `nano-vllm-voxcpm`) — 1024/1024 OK in Run 6 on the
+  same GPU. The hot/cold voxcpm backend is fine for dev, single
+  requests, and reproducing Run 7, with the 15-minute-cooldown
+  caveat for anything concurrent. See
+  [Run 7 notes §Root cause](results/2026-04-17-run7-hotcold-voxcpm-tts40w/notes.md#root-cause--confirmed-upstream).
 
 ### When to re-benchmark
 
