@@ -1,0 +1,62 @@
+{
+  "schema_version": "1.0.0",
+  "run_id": "9596f4d4-a700-4a13-ba58-9e2dd64f65ba",
+  "run_started_at": "2026-04-23T21:04:53.459114+00:00",
+  "run_finished_at": "2026-04-23T21:05:15.082667+00:00",
+  "node": {
+    "host": "openclaw",
+    "os": "Linux 6.17.0-22-generic",
+    "gpu": "NVIDIA GeForce RTX 5090",
+    "vram_total_gb": 31.8427734375,
+    "vram_free_gb_at_start": 0.0869140625,
+    "driver": "590.48.01",
+    "cuda": "13.1",
+    "shared_gpu": false,
+    "cold_start": false
+  },
+  "service": {
+    "repo": "unknown",
+    "commit": "0000000",
+    "protocol_doc": "uttera/uttera-infra:benchmarks/PROTOCOL.md",
+    "model": "openbmb/VoxCPM2",
+    "engine": "nano-vllm-voxcpm",
+    "config": {
+      "max_num_seqs": 32,
+      "max_model_len": 4096,
+      "gpu_memory_utilization": 0.85
+    }
+  },
+  "corpus": {
+    "id": "uttera-tts-40w",
+    "n_clips": 40,
+    "total_audio_seconds": 0.0,
+    "sha256_manifest": "d7322718382eca7cfd7a4c1e1697b969cba78165f6f2b3d68cc5d1a3ca688b53"
+  },
+  "profile": {
+    "kind": "burst",
+    "n": 64,
+    "warmup": 3
+  },
+  "command": "./bench.py --mode tts --server http://sphinx:9004 --profile burst --n 64 --corpus ./corpora/uttera-tts-40w --client-timeout 600 --output ./results/2026-04-23-run8-vram-fix/vllm-burst64-defaults.json",
+  "raw_csv_path": "vllm-burst64-defaults.csv",
+  "metrics": {
+    "wall_s": 21.6235408782959,
+    "ok": 64,
+    "fail": 0,
+    "rps": 2.9597372770820547,
+    "rtf_agg": 0.0,
+    "latency_ms": {
+      "min": 43.00570487976074,
+      "p50": 11433.01248550415,
+      "p90": 14915.103673934937,
+      "p95": 15238.041877746582,
+      "p99": 15564.622640609741,
+      "max": 15564.622640609741,
+      "avg": 10379.530683159828
+    },
+    "routes": {
+      "CACHE": 6,
+      "HOT": 58
+    }
+  }
+}
